@@ -22,7 +22,10 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 // 3. Booking Engine (Mengunci slot 15 menit & Generate Midtrans Snap)
 Route::post('/booking/hold', [BookingController::class, 'hold']);
 
-// 4. Payment Webhooks (Menerima callback/notifikasi dari server Midtrans)
+// 4. Cek Status Booking (untuk polling frontend setelah pembayaran)
+Route::get('/booking/status/{bookingId}', [BookingController::class, 'status']);
+
+// 5. Payment Webhooks (Menerima callback/notifikasi dari server Midtrans)
 Route::post('/webhooks/midtrans', [WebhookController::class, 'midtrans']);
 
 
