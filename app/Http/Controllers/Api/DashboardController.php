@@ -30,10 +30,10 @@ class DashboardController extends Controller
         ]);
 
         // Jika user melakukan 'Submit Final', paksa semua data wajib diisi
-        // Validasi Deadline Maksimal Pengisian: 10 April 2025 12:00 WIB
-        $deadline = \Carbon\Carbon::create(2025, 4, 10, 12, 0, 0, 'Asia/Jakarta');
+        // Validasi Deadline Maksimal Pengisian: 10 April 2026 12:00 WIB
+        $deadline = \Carbon\Carbon::create(2026, 4, 10, 12, 0, 0, 'Asia/Jakarta');
         if (now('Asia/Jakarta')->greaterThan($deadline)) {
-            return $this->errorResponse('Batas waktu pengisian formulir telah berakhir (10 April 2025 12:00 WIB).', 403);
+            return $this->errorResponse('Batas waktu pengisian formulir telah berakhir (10 April 2026 12:00 WIB).', 403);
         }
 
         // Jika user melakukan 'Submit Final', paksa semua data formulir (sesuai PDF) wajib diisi
