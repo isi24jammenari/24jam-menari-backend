@@ -45,14 +45,14 @@ class DashboardController extends Controller
                 'category'            => 'required|string|in:Anak-anak,Remaja,Dewasa,Disabilitas',
                 'supporters'          => 'required|string',
                 
-                // Validasi Array
+                // Validasi Array (Sinopsis sekarang masuk ke dalam Works)
                 'works'               => 'required|array|min:1',
                 'works.*.title'       => 'required|string|max:255',
                 'works.*.duration'    => 'required|numeric|min:1',
+                'works.*.synopsis'    => 'required|string',
                 'certificate_names'   => 'required|array|min:1',
                 'certificate_names.*' => 'required|string|max:255',
                 
-                'synopsis'            => 'required|string',
                 'arrival_departure'   => 'required|string',
                 'music_type'          => 'required|string|in:Live,Playback',
                 'instruments'         => 'nullable|array',
@@ -82,7 +82,7 @@ class DashboardController extends Controller
                 'category'            => $request->category,
                 'supporters'          => $request->supporters,
                 'works'               => $request->works, 
-                'synopsis'            => $request->synopsis,
+                'synopsis'            => null, // Kita kosongkan karena sinopsis menempel di dalam Works
                 'arrival_departure'   => $request->arrival_departure,
                 'music_type'          => $request->music_type,
                 'instruments'         => $request->instruments,
