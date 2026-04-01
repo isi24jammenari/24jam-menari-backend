@@ -12,15 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    
     ->withMiddleware(function (Middleware $middleware) {
-        // Mengizinkan Frontend Next.js mengakses API
         $middleware->statefulApi();
-        
-        // Memaksa respon selalu JSON (menghindari error render HTML dari Laravel saat terjadi exception)
-        $middleware->api(prepend: [
-            \Illuminate\Http\Middleware\HandleCors::class,
-        ]);
     })
+
     ->withExceptions(function (Exceptions $exceptions) {
         // Format otomatis error NotFound menjadi JSON standar kita
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, Request $request) {
