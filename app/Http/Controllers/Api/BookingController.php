@@ -138,4 +138,35 @@ class BookingController extends Controller
             return $this->errorResponse('Terjadi kesalahan sistem: ' . $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Endpoint polling: frontend memanggil ini setiap 5 detik
+     * untuk mengetahui apakah pembayaran sudah dikonfirmasi Midtrans via webhook.
+     *
+     * Route: GET /booking/status/{bookingId}
+     */
+    public function status(string $bookingId)
+    {
+        $booking = Booking::select('id', 'status', 'expires_at', 'payment_method')
+            ->where('id', $bookingId)
+            ->first();
+
+        if (!$booking) {
+            return $this->errorResponse('Booking tidak ditemukan.', 404);
+        }
+
+        // Jika masih pending tapi sudah melewati expires_at di server,
+        // kembalikan sebagai expired agar frontend tidak terus polling sia-sia.
+        if ($booking->status === 'pending' && now()->isAfter($booking->expires_at)) {
+            return $this->successResponse([
+                'status'         => 'expired',
+                'payment_method' => $booking->payment_method,
+            ]);
+        }
+
+        return $this->successResponse([
+            'status'         => $booking->status,
+            'payment_method' => $booking->payment_method,
+        ]);
+    }
 }
