@@ -89,7 +89,6 @@ class BookingController extends Controller
                     'phone'      => '08111222333'
                 ],
                 'custom_expiry'       => [
-                    'order_time'      => now()->timezone('Asia/Jakarta')->format('Y-m-d H:i:s O'),
                     'expiry_duration' => 15,
                     'unit'            => 'minute'
                 ]
@@ -152,3 +151,5 @@ class BookingController extends Controller
         ]);
     }
 }
+
+//commit
