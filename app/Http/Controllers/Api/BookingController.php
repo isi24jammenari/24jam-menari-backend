@@ -88,7 +88,21 @@ class BookingController extends Controller
                 'payment_type' => $paymentType,
                 'transaction_details' => [
                     'order_id' => $orderId,
-                    'gross_amount' => $slot->price,
+                    // 1. MUTLAK INTEGER: Midtrans benci tipe data string/float untuk harga
+                    'gross_amount' => (int) $slot->price,
+                ],
+                // 2. ANTI-FRAUD: Wajib ada agar Simulator/Midtrans tidak menganggap ini spam/bot
+                'customer_details' => [
+                    'first_name' => 'Peserta',
+                    'last_name' => '24 Jam Menari',
+                    'email' => 'peserta@24jammenari.com', // Dummy data
+                    'phone' => '08111222333'
+                ],
+                // 3. SINKRONISASI EXPIRED: Paksa Midtrans hangus dalam 15 menit
+                'custom_expiry' => [
+                    'order_time' => now()->timezone('Asia/Jakarta')->format('Y-m-d H:i:s O'),
+                    'expiry_duration' => 15,
+                    'unit' => 'minute'
                 ]
             ], $paymentOptions);
 
