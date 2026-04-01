@@ -88,10 +88,6 @@ class BookingController extends Controller
                     'email'      => 'peserta@24jammenari.com',
                     'phone'      => '08111222333'
                 ],
-                'custom_expiry'       => [
-                    'expiry_duration' => 15,
-                    'unit'            => 'minute'
-                ]
             ], $paymentOptions);
 
             $chargeResponse = \Midtrans\CoreApi::charge($params);
