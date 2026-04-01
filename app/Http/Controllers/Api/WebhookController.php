@@ -11,11 +11,20 @@ class WebhookController extends Controller
 {
     public function midtrans(Request $request)
     {
-        $serverKey = env('MIDTRANS_SERVER_KEY');
-        $hashed = hash("sha512", $request->order_id . $request->status_code . $request->gross_amount . $serverKey);
+        // ✅ FIX 1: Pakai config() bukan env() agar tidak null setelah config:cache
+        $serverKey = config('midtrans.server_key');
 
-        // Validasi Signature (Keamanan Murni)
+        $hashed = hash(
+            "sha512",
+            $request->order_id .
+            $request->status_code .
+            $request->gross_amount .
+            $serverKey
+        );
+
+        // Validasi Signature
         if ($hashed !== $request->signature_key) {
+            Log::warning("Midtrans webhook invalid signature for order: {$request->order_id}");
             return response()->json(['message' => 'Invalid signature'], 403);
         }
 
@@ -31,15 +40,16 @@ class WebhookController extends Controller
             return response()->json(['message' => 'Already processed']);
         }
 
-        if ($transactionStatus == 'capture' || $transactionStatus == 'settlement') {
+        if ($transactionStatus === 'capture' || $transactionStatus === 'settlement') {
             $booking->update(['status' => 'success']);
-            // Slot biarkan is_booked = true (kunci permanen)
             Log::info("Payment Success for Order: {$request->order_id}");
-        } 
-        else if ($transactionStatus == 'cancel' || $transactionStatus == 'deny' || $transactionStatus == 'expire') {
+        } elseif (
+            $transactionStatus === 'cancel' ||
+            $transactionStatus === 'deny'  ||
+            $transactionStatus === 'expire'
+        ) {
             $booking->update(['status' => 'failed']);
-            // Bebaskan slot karena gagal bayar
-            $booking->timeSlot->update(['is_booked' => false]);
+            $booking->timeSlot()->update(['is_booked' => false]);
             Log::info("Payment Failed/Expired for Order: {$request->order_id}");
         }
 
