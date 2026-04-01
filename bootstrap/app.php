@@ -12,14 +12,17 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->statefulApi();
         $middleware->validateCsrfTokens(except: [
             'api/*'
         ]);
-    })
 
+        // ✅ TAMBAHAN: Daftarkan alias middleware Gatekeeper Formulir
+        $middleware->alias([
+            'performance.completed' => \App\Http\Middleware\CheckPerformanceCompleted::class,
+        ]);
+    })
     ->withExceptions(function (Exceptions $exceptions) {
         // Format otomatis error NotFound menjadi JSON standar kita
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, Request $request) {

@@ -10,8 +10,13 @@ class Performance extends Model
     use HasUuids;
 
     protected $fillable = [
-        'booking_id', 'group_name', 'city', 
-        'contact_name', 'whatsapp_number', 'dance_title'
+        'booking_id',
+        'group_name',
+        'city',
+        'contact_name',
+        'whatsapp_number',
+        'dance_title',
+        'status',            // <-- Tambahan baru
     ];
 
     public function booking()
