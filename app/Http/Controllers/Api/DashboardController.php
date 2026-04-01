@@ -30,13 +30,28 @@ class DashboardController extends Controller
         ]);
 
         // Jika user melakukan 'Submit Final', paksa semua data wajib diisi
+        // Validasi Deadline Maksimal Pengisian: 10 April 2025 12:00 WIB
+        $deadline = \Carbon\Carbon::create(2025, 4, 10, 12, 0, 0, 'Asia/Jakarta');
+        if (now('Asia/Jakarta')->greaterThan($deadline)) {
+            return $this->errorResponse('Batas waktu pengisian formulir telah berakhir (10 April 2025 12:00 WIB).', 403);
+        }
+
+        // Jika user melakukan 'Submit Final', paksa semua data formulir (sesuai PDF) wajib diisi
         if ($request->action === 'submit') {
             $request->validate([
-                'group_name'      => 'required|string|max:255',
-                'city'            => 'required|string|max:255',
-                'contact_name'    => 'required|string|max:255',
-                'whatsapp_number' => 'required|string|max:20',
-                'dance_title'     => 'required|string|max:255',
+                'group_name'          => 'required|string|max:255',
+                'contact_person'      => 'required|string|max:255',
+                'cp_name'             => 'required|string|max:255',
+                'category'            => 'required|string|in:Anak-anak,Remaja,Dewasa,Disabilitas',
+                'supporters'          => 'required|string',
+                'dance_title'         => 'required|string|max:255',
+                'duration'            => 'required|string|max:50',
+                'synopsis'            => 'required|string',
+                'arrival_departure'   => 'required|string',
+                'music_type'          => 'required|string|in:Live,Playback',
+                'instruments'         => 'nullable|string', // opsional, wajibnya ditangani frontend jika Live
+                'property_setting'    => 'nullable|string',
+                'certificate_names'   => 'required|string',
             ]);
         }
 
@@ -53,15 +68,24 @@ class DashboardController extends Controller
         $status = $request->action === 'submit' ? 'completed' : 'draft';
 
         // Simpan atau Update Data Pementasan (Nullable fields akan aman jika draft)
+        // Simpan atau Update Data Pementasan (Nullable fields akan aman jika draft)
         $performance = Performance::updateOrCreate(
             ['booking_id' => $booking->id], 
             [
-                'group_name'      => $request->group_name,
-                'city'            => $request->city,
-                'contact_name'    => $request->contact_name,
-                'whatsapp_number' => $request->whatsapp_number,
-                'dance_title'     => $request->dance_title,
-                'status'          => $status
+                'group_name'          => $request->group_name,
+                'contact_person'      => $request->contact_person,
+                'cp_name'             => $request->cp_name,
+                'category'            => $request->category,
+                'supporters'          => $request->supporters,
+                'dance_title'         => $request->dance_title,
+                'duration'            => $request->duration,
+                'synopsis'            => $request->synopsis,
+                'arrival_departure'   => $request->arrival_departure,
+                'music_type'          => $request->music_type,
+                'instruments'         => $request->instruments,
+                'property_setting'    => $request->property_setting,
+                'certificate_names'   => $request->certificate_names,
+                'status'              => $status
             ]
         );
 

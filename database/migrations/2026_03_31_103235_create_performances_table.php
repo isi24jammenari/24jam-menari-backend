@@ -14,12 +14,30 @@ return new class extends Migration
             // Mengikat ke tabel bookings
             $table->foreignUuid('booking_id')->constrained('bookings')->cascadeOnDelete();
             
-            // Data Formulir Pementasan
-            $table->string('group_name');
-            $table->string('city');
-            $table->string('contact_name');
-            $table->string('whatsapp_number');
-            $table->string('dance_title');
+            // ==================================================
+            // DATA FORMULIR PEMENTASAN (Sesuai PDF)
+            // Semua diset nullable() demi mengakomodir fitur DRAFT
+            // ==================================================
+            
+            $table->string('group_name')->nullable();          // 1. Nama Peserta / Grup
+            $table->string('contact_person')->nullable();      // 2. Contact Person (Instansi/Kategori CP)
+            $table->string('cp_name')->nullable();             // 3. Nama CP
+            
+            // 4. Festival (Venue/Waktu) -> Sudah terwakili oleh relasi booking_id ke time_slots
+            
+            $table->enum('category', ['Anak-anak', 'Remaja', 'Dewasa', 'Disabilitas'])->nullable(); // 6. Kategori
+            $table->text('supporters')->nullable();            // 6. Pendukung Karya (Jumlah/Detail)
+            $table->string('dance_title')->nullable();         // 7. Judul Karya
+            $table->string('duration')->nullable();            // 8. Durasi Karya
+            $table->text('synopsis')->nullable();              // 9. Sinopsis
+            $table->string('arrival_departure')->nullable();   // 10. Kedatangan & Kepulangan
+            $table->enum('music_type', ['Live', 'Playback'])->nullable(); // 11. Keterangan Musik
+            $table->text('instruments')->nullable();           // 12. Alat Musik (Jika Live)
+            $table->text('property_setting')->nullable();      // 13. Property / Setting
+            $table->text('certificate_names')->nullable();     // 14. Nama Lengkap untuk Sertifikat
+            
+            // Status Gatekeeper
+            $table->enum('status', ['draft', 'completed'])->default('draft');
             
             $table->timestamps();
         });

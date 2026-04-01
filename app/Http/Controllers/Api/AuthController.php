@@ -19,10 +19,6 @@ class AuthController extends Controller
             'email'                 => 'required|string|email|max:255|unique:users',
             'password'              => 'required|string|min:8|confirmed',
             'booking_id'            => 'required|uuid|exists:bookings,id',
-            // --- Validasi Tambahan Baru ---
-            'phone_number'          => 'required|string|max:20',
-            'institution_name'      => 'required|string|max:255',
-            'address'               => 'required|string',
         ]);
 
         // 2. Cek status booking SECARA EKSPLISIT sebelum membuat user
@@ -61,9 +57,6 @@ class AuthController extends Controller
                 'email'            => $request->email,
                 'password'         => Hash::make($request->password),
                 'role'             => 'user',
-                'phone_number'     => $request->phone_number,
-                'institution_name' => $request->institution_name,
-                'address'          => $request->address,
             ]);
 
             // ✅ FIX 6: Gunakan affected rows untuk deteksi race condition

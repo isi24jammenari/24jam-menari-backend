@@ -12,11 +12,19 @@ class Performance extends Model
     protected $fillable = [
         'booking_id',
         'group_name',
-        'city',
-        'contact_name',
-        'whatsapp_number',
+        'contact_person',
+        'cp_name',
+        'category',
+        'supporters',
         'dance_title',
-        'status',            // <-- Tambahan baru
+        'duration',
+        'synopsis',
+        'arrival_departure',
+        'music_type',
+        'instruments',
+        'property_setting',
+        'certificate_names',
+        'status',
     ];
 
     public function booking()
