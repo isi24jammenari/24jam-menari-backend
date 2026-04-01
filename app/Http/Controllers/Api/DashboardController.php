@@ -44,14 +44,19 @@ class DashboardController extends Controller
                 'cp_name'             => 'required|string|max:255',
                 'category'            => 'required|string|in:Anak-anak,Remaja,Dewasa,Disabilitas',
                 'supporters'          => 'required|string',
-                'dance_title'         => 'required|string|max:255',
-                'duration'            => 'required|string|max:50',
+                
+                // Validasi Array
+                'works'               => 'required|array|min:1',
+                'works.*.title'       => 'required|string|max:255',
+                'works.*.duration'    => 'required|numeric|min:1',
+                'certificate_names'   => 'required|array|min:1',
+                'certificate_names.*' => 'required|string|max:255',
+                
                 'synopsis'            => 'required|string',
                 'arrival_departure'   => 'required|string',
                 'music_type'          => 'required|string|in:Live,Playback',
-                'instruments'         => 'nullable|string', // opsional, wajibnya ditangani frontend jika Live
+                'instruments'         => 'nullable|array',
                 'property_setting'    => 'nullable|string',
-                'certificate_names'   => 'required|string',
             ]);
         }
 
@@ -68,7 +73,6 @@ class DashboardController extends Controller
         $status = $request->action === 'submit' ? 'completed' : 'draft';
 
         // Simpan atau Update Data Pementasan (Nullable fields akan aman jika draft)
-        // Simpan atau Update Data Pementasan (Nullable fields akan aman jika draft)
         $performance = Performance::updateOrCreate(
             ['booking_id' => $booking->id], 
             [
@@ -77,8 +81,7 @@ class DashboardController extends Controller
                 'cp_name'             => $request->cp_name,
                 'category'            => $request->category,
                 'supporters'          => $request->supporters,
-                'dance_title'         => $request->dance_title,
-                'duration'            => $request->duration,
+                'works'               => $request->works, 
                 'synopsis'            => $request->synopsis,
                 'arrival_departure'   => $request->arrival_departure,
                 'music_type'          => $request->music_type,
