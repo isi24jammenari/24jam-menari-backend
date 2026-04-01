@@ -22,8 +22,6 @@ class BookingController extends Controller
         try {
             DB::beginTransaction();
 
-            // PESSIMISTIC LOCKING: Kunci baris slot ini di database selama transaksi berjalan.
-            // Mencegah Race Condition ganda.
             $slot = TimeSlot::where('id', $request->time_slot_id)->lockForUpdate()->first();
 
             if ($slot->is_booked) {
@@ -31,44 +29,38 @@ class BookingController extends Controller
                 return $this->errorResponse('Mohon maaf, slot ini baru saja diambil orang lain.', 409);
             }
 
-            // Kunci slot secara logika (seolah-olah sudah laku)
             $slot->update(['is_booked' => true]);
 
-            // Buat order ID unik untuk Midtrans
             $orderId = '24JAM-' . strtoupper(Str::random(8)) . '-' . time();
 
-            // Buat data Booking Pending (Tanpa user_id dulu, karena user belum punya akun)
             $booking = Booking::create([
-                'time_slot_id' => $slot->id,
-                'midtrans_order_id' => $orderId,
-                'amount' => $slot->price,
-                'payment_method' => $request->payment_method,
-                'status' => 'pending',
-                'expires_at' => now()->addMinutes(15)
+                'time_slot_id'       => $slot->id,
+                'midtrans_order_id'  => $orderId,
+                'amount'             => $slot->price,
+                'payment_method'     => $request->payment_method,
+                'status'             => 'pending',
+                'expires_at'         => now()->addMinutes(15)
             ]);
 
-            // KONFIGURASI MIDTRANS CORE API
-            \Midtrans\Config::$serverKey = env('MIDTRANS_SERVER_KEY');
-            \Midtrans\Config::$isProduction = env('MIDTRANS_IS_PRODUCTION', false);
-            \Midtrans\Config::$isSanitized = true;
+            // ✅ FIX 2: Pakai config() bukan env() agar tetap bekerja setelah config:cache
+            \Midtrans\Config::$serverKey    = config('midtrans.server_key');
+            \Midtrans\Config::$isProduction = config('midtrans.is_production');
+            \Midtrans\Config::$isSanitized  = true;
 
-            $paymentType = '';
+            $paymentType    = '';
             $paymentOptions = [];
 
-            // Mapping Metode Pembayaran Brutal ke Format Core API Midtrans
             switch ($request->payment_method) {
                 case 'bca':
                 case 'bni':
                 case 'bri':
-                    $paymentType = 'bank_transfer';
+                    $paymentType    = 'bank_transfer';
                     $paymentOptions = [
-                        'bank_transfer' => [
-                            'bank' => $request->payment_method
-                        ]
+                        'bank_transfer' => ['bank' => $request->payment_method]
                     ];
                     break;
                 case 'mandiri':
-                    $paymentType = 'echannel';
+                    $paymentType    = 'echannel';
                     $paymentOptions = [
                         'echannel' => [
                             'bill_info1' => 'Payment',
@@ -85,34 +77,29 @@ class BookingController extends Controller
             }
 
             $params = array_merge([
-                'payment_type' => $paymentType,
+                'payment_type'        => $paymentType,
                 'transaction_details' => [
-                    'order_id' => $orderId,
-                    // 1. MUTLAK INTEGER: Midtrans benci tipe data string/float untuk harga
+                    'order_id'     => $orderId,
                     'gross_amount' => (int) $slot->price,
                 ],
-                // 2. ANTI-FRAUD: Wajib ada agar Simulator/Midtrans tidak menganggap ini spam/bot
-                'customer_details' => [
+                'customer_details'    => [
                     'first_name' => 'Peserta',
-                    'last_name' => '24 Jam Menari',
-                    'email' => 'peserta@24jammenari.com', // Dummy data
-                    'phone' => '08111222333'
+                    'last_name'  => '24 Jam Menari',
+                    'email'      => 'peserta@24jammenari.com',
+                    'phone'      => '08111222333'
                 ],
-                // 3. SINKRONISASI EXPIRED: Paksa Midtrans hangus dalam 15 menit
-                'custom_expiry' => [
-                    'order_time' => now()->timezone('Asia/Jakarta')->format('Y-m-d H:i:s O'),
+                'custom_expiry'       => [
+                    'order_time'      => now()->timezone('Asia/Jakarta')->format('Y-m-d H:i:s O'),
                     'expiry_duration' => 15,
-                    'unit' => 'minute'
+                    'unit'            => 'minute'
                 ]
             ], $paymentOptions);
 
-            // Eksekusi charge ke Core API
             $chargeResponse = \Midtrans\CoreApi::charge($params);
 
-            // Parsing response Core API agar frontend tidak pusing
             $paymentData = [
-                'booking_id' => $booking->id,
-                'expires_at' => $booking->expires_at,
+                'booking_id'     => $booking->id,
+                'expires_at'     => $booking->expires_at,
                 'payment_method' => $request->payment_method,
             ];
 
@@ -120,13 +107,16 @@ class BookingController extends Controller
                 $paymentData['va_number'] = $chargeResponse->va_numbers[0]->va_number;
             } elseif ($request->payment_method === 'mandiri') {
                 $paymentData['biller_code'] = $chargeResponse->biller_code;
-                $paymentData['bill_key'] = $chargeResponse->bill_key;
-            } elseif ($request->payment_method === 'qris' && isset($chargeResponse->actions[0])) {
-                // url gambar QR code dari Midtrans
-                $paymentData['qr_code_url'] = $chargeResponse->actions[0]->url; 
+                $paymentData['bill_key']    = $chargeResponse->bill_key;
+            } elseif ($request->payment_method === 'qris') {
+                // ✅ FIX 1: Cari action by name, bukan by index
+                // Urutan array actions dari Midtrans tidak dijamin sama setiap saat
+                $generateQrAction = collect($chargeResponse->actions ?? [])
+                    ->firstWhere('name', 'generate-qr-code');
+
+                $paymentData['qr_code_url'] = $generateQrAction?->url ?? null;
             }
 
-            // DISPATCH WORKER: Lempar tugas ke Job Worker untuk mengecek 15 menit dari sekarang
             ExpireBookingJob::dispatch($booking->id)->delay(now()->addMinutes(15));
 
             DB::commit();
@@ -139,12 +129,6 @@ class BookingController extends Controller
         }
     }
 
-    /**
-     * Endpoint polling: frontend memanggil ini setiap 5 detik
-     * untuk mengetahui apakah pembayaran sudah dikonfirmasi Midtrans via webhook.
-     *
-     * Route: GET /booking/status/{bookingId}
-     */
     public function status(string $bookingId)
     {
         $booking = Booking::select('id', 'status', 'expires_at', 'payment_method')
@@ -155,8 +139,6 @@ class BookingController extends Controller
             return $this->errorResponse('Booking tidak ditemukan.', 404);
         }
 
-        // Jika masih pending tapi sudah melewati expires_at di server,
-        // kembalikan sebagai expired agar frontend tidak terus polling sia-sia.
         if ($booking->status === 'pending' && now()->isAfter($booking->expires_at)) {
             return $this->successResponse([
                 'status'         => 'expired',
