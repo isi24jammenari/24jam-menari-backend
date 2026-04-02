@@ -123,8 +123,8 @@ class AuthController extends Controller
         $origin = (string) $request->header('origin', '');
         $referer = (string) $request->header('referer', '');
 
-        // Deteksi apakah request berasal dari subdomain 'admin.'
-        $isAdminDomain = str_contains($origin, 'admin.') || str_contains($referer, 'admin.');
+        // Deteksi apakah request berasal dari subdomain 'admin.' ATAU jalur 'komunitas'
+        $isAdminDomain = str_contains($origin, 'admin.') || str_contains($referer, 'admin.') || str_contains($origin, 'komunitas') || str_contains($referer, 'komunitas');
 
         // 1. Jika URL-nya Admin, tapi role-nya BUKAN admin (User biasa nyasar ke portal Admin)
         if ($isAdminDomain && $user->role !== 'admin') {
