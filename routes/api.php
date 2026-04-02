@@ -7,7 +7,9 @@ use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\AdminController;
-use App\Http\Controllers\Api\DocumentController; // (Nanti di-uncomment saat controller dokumen dibuat)
+use App\Http\Controllers\Api\DocumentController; 
+use App\Http\Controllers\Api\NonstopDancerController;
+use App\Http\Controllers\Api\NonstopAdminController;
 
 // ==========================================
 // PUBLIC ROUTES (Tanpa Token)
@@ -29,6 +31,10 @@ Route::post('/booking/hold', [BookingController::class, 'hold']);
 
 // Route untuk mengambil kembali sesi pembayaran yang nyangkut
 Route::post('/booking/claim', [BookingController::class, 'claimOrphaned']);
+
+// Route Pendaftaran 24 Jam Nonstop (File Upload Massif)
+Route::post('/komunitas/register', [NonstopDancerController::class, 'register']);
+Route::get('/komunitas/status', [NonstopAdminController::class, 'getStatus']);
 
 // 4. Cek Status Booking (untuk polling frontend setelah pembayaran)
 Route::get('/booking/status/{bookingId}', [BookingController::class, 'status']);
@@ -89,5 +95,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Manajemen E-Sertifikat
         Route::get('/certificates/stats', [AdminController::class, 'getCertificateStats']);
         Route::get('/certificates/download-zip', [AdminController::class, 'generateCertificateZip']);
+
+        // Komunitas Nonstop Routes
+        Route::get('/komunitas/overview', [NonstopAdminController::class, 'getOverview']);
+        Route::get('/komunitas/export', [NonstopAdminController::class, 'exportCsv']);
+        Route::post('/komunitas/toggle-status', [NonstopAdminController::class, 'toggleStatus']);
     });
 });
