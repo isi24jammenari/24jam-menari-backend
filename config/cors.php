@@ -16,6 +16,8 @@ return [
         'https://admin.24jammenariisisurakarta.com',
         'https://24jammenariisisurakarta.com',
         'http://admin.24jammenariisisurakarta.com',
+        'https://komunitas.24jammenariisisurakarta.com',
+        'http://komunitas.24jammenariisisurakarta.com',
     ],
     'allowed_origins_patterns' => [],
 
