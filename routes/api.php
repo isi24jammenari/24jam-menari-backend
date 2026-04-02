@@ -68,7 +68,19 @@ Route::middleware('auth:sanctum')->group(function () {
     // ==========================================
     // ADMIN ROUTES
     // ==========================================
-    Route::get('/admin/overview', [AdminController::class, 'overview']);
-    Route::get('/admin/rundown', [AdminController::class, 'rundown']);
-
+    Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
+        // Overview & Mutasi
+        Route::get('/overview', [AdminController::class, 'getOverview']);
+        
+        // Data Penari & Rundown (Digabung menjadi 1 Endpoint Masif)
+        Route::get('/participants', [AdminController::class, 'getParticipants']);
+        
+        // Pengelolaan (Buka Tutup Akses E-Sertifikat via Cache)
+        Route::post('/settings/toggle-certificate', [AdminController::class, 'toggleCertificateAccess']);
+        Route::get('/settings/certificate-status', [AdminController::class, 'getCertificateStatus']);
+        
+        // Manajemen E-Sertifikat
+        Route::get('/certificates/stats', [AdminController::class, 'getCertificateStats']);
+        Route::get('/certificates/download-zip', [AdminController::class, 'generateCertificateZip']);
+    });
 });

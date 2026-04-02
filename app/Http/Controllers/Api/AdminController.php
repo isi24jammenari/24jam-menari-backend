@@ -4,75 +4,142 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
-use App\Models\TimeSlot;
 use App\Models\Performance;
+use App\Models\TimeSlot;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Barryvdh\DomPDF\Facade\Pdf;
+use ZipArchive;
 
 class AdminController extends Controller
 {
-    // Mengecek apakah user adalah Admin
-    private function isAdmin(Request $request)
+    /**
+     * Tab Overview & Mutasi (Pagination 20 data per page)
+     */
+    public function getOverview(Request $request)
     {
-        return $request->user()->role === 'admin';
-    }
-
-    // Statistik untuk Kotak-Kotak di Dashboard Admin
-    public function overview(Request $request)
-    {
-        if (!$this->isAdmin($request)) {
-            return $this->errorResponse('Akses ilegal. Anda bukan admin.', 403);
-        }
-
-        // Statistik Dasar
-        $totalRevenue = Booking::where('status', 'success')->sum('amount');
+        $totalIncome = Booking::where('status', 'paid')->sum('amount');
         $totalSlots = TimeSlot::count();
         $bookedSlots = TimeSlot::where('is_booked', true)->count();
 
-        // TAMBAHAN: Statistik Kelengkapan Data Karya (Berdasarkan booking yang success)
-        $completedPerformances = Performance::where('status', 'completed')
-            ->whereHas('booking', function ($query) {
-                $query->where('status', 'success');
-            })->count();
-
-        $draftPerformances = Performance::where('status', 'draft')
-            ->whereHas('booking', function ($query) {
-                $query->where('status', 'success');
-            })->count();
-
-        // Peserta yang sudah bayar tapi belum menyentuh form sama sekali
-        $emptyPerformances = Booking::where('status', 'success')
-            ->whereDoesntHave('performance')
-            ->count();
+        // Mutasi Data
+        $mutations = Booking::with(['user:id,name,email', 'timeSlot.venue:id,name'])
+            ->where('status', 'paid')
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
 
         return $this->successResponse([
-            'total_revenue' => $totalRevenue,
-            'total_slots' => $totalSlots,
-            'booked_slots' => $bookedSlots,
-            'occupancy_rate' => $totalSlots > 0 ? round(($bookedSlots / $totalSlots) * 100, 1) : 0,
-            
-            // Data baru untuk kebutuhan Admin
-            'data_completion' => [
-                'completed' => $completedPerformances,
-                'draft' => $draftPerformances,
-                'empty' => $emptyPerformances,
-                'total_need_action' => $draftPerformances + $emptyPerformances // Total user yang datanya belum beres
-            ]
-        ], 'Data overview berhasil ditarik.');
+            'stats' => [
+                'total_income'    => $totalIncome,
+                'total_slots'     => $totalSlots,
+                'booked_slots'    => $bookedSlots,
+                'available_slots' => $totalSlots - $bookedSlots,
+            ],
+            'mutations' => $mutations
+        ], 'Berhasil mengambil overview dan mutasi.');
     }
 
-    // Menarik Data Keseluruhan untuk Tabel Rundown
-    public function rundown(Request $request)
+    /**
+     * Tab Data Diri & Rundown (Digabung)
+     */
+    public function getParticipants()
     {
-        if (!$this->isAdmin($request)) {
-            return $this->errorResponse('Akses ilegal. Anda bukan admin.', 403);
-        }
-
-        // Join brutal: Ambil booking, data slot, data venue, data pementasan, dan info akunnya
-        $rundown = Booking::with(['user', 'timeSlot.venue', 'performance'])
-            ->where('status', 'success')
+        // Menarik semua relasi sekaligus untuk difilter oleh Excel di Frontend
+        $participants = Booking::with(['user', 'timeSlot.venue', 'performance'])
+            ->where('status', 'paid')
             ->get();
 
-        // Frontend bisa menggunakan `$item->performance->status` untuk menampilkan badge "Draft" atau "Lengkap" di tabel
-        return $this->successResponse($rundown, 'Data rundown berhasil ditarik.');
+        return $this->successResponse($participants, 'Berhasil mengambil data seluruh peserta.');
+    }
+
+    /**
+     * Tab Pengelolaan (Buka/Tutup Akses Download)
+     */
+    public function toggleCertificateAccess(Request $request)
+    {
+        $request->validate(['is_open' => 'required|boolean']);
+        
+        // Simpan status di Cache secara permanen
+        Cache::forever('certificate_access_open', $request->is_open);
+        
+        $statusText = $request->is_open ? 'dibuka' : 'ditutup';
+        return $this->successResponse(null, "Akses download E-Sertifikat untuk user telah $statusText.");
+    }
+
+    public function getCertificateStatus()
+    {
+        $isOpen = Cache::get('certificate_access_open', false);
+        return $this->successResponse(['is_open' => $isOpen], 'Berhasil mengambil status akses sertifikat.');
+    }
+
+    /**
+     * Manajemen E-Sertifikat: Statistik
+     */
+    public function getCertificateStats()
+    {
+        $completedPerformances = Performance::where('status', 'completed')->get();
+        $totalCertificates = 0;
+
+        foreach ($completedPerformances as $perf) {
+            if (is_array($perf->certificate_names)) {
+                $totalCertificates += count($perf->certificate_names);
+            }
+        }
+
+        return $this->successResponse([
+            'total_valid_groups' => $completedPerformances->count(),
+            'total_certificates' => $totalCertificates,
+        ], 'Berhasil menghitung statistik E-Sertifikat.');
+    }
+
+    /**
+     * Manajemen E-Sertifikat: COMPILER ZIP
+     */
+    public function generateCertificateZip()
+    {
+        // Bypass time limit karena generate PDF massal sangat memakan waktu
+        ini_set('max_execution_time', 300); 
+
+        $performances = Performance::with(['booking.user', 'booking.timeSlot.venue'])
+            ->where('status', 'completed')
+            ->get();
+
+        if ($performances->isEmpty()) {
+            return $this->errorResponse('Belum ada data pementasan yang berstatus Final.', 404);
+        }
+
+        $zipFileName = 'E-Sertifikat-24JamMenari-' . date('Y-m-d_H-i-s') . '.zip';
+        $zipPath = storage_path('app/public/' . $zipFileName);
+
+        $zip = new ZipArchive;
+        if ($zip->open($zipPath, ZipArchive::CREATE) === TRUE) {
+            foreach ($performances as $perf) {
+                // Bersihkan nama grup agar aman dijadikan nama folder
+                $folderName = preg_replace('/[^A-Za-z0-9\- \_]/', '', $perf->group_name ?? 'Grup_Anonim');
+                $names = $perf->certificate_names ?? [];
+
+                foreach ($names as $name) {
+                    $cleanName = preg_replace('/[^A-Za-z0-9\- \.\_]/', '', $name);
+                    
+                    // Generate PDF dari blade template (in-memory)
+                    $pdf = Pdf::loadView('pdf.certificate', [
+                        'name' => $name,
+                        'group_name' => $perf->group_name,
+                        'venue' => $perf->booking->timeSlot->venue->name ?? 'Venue'
+                    ])->setPaper('a4', 'landscape');
+
+                    // Masukkan PDF ke dalam folder spesifik grup di dalam ZIP
+                    $fileName = $folderName . '/' . $cleanName . '.pdf';
+                    $zip->addFromString($fileName, $pdf->output());
+                }
+            }
+            $zip->close();
+        } else {
+            return $this->errorResponse('Gagal mengkompilasi file ZIP.', 500);
+        }
+
+        // Return file zip dan LANGSUNG HAPUS dari server setelah didownload agar disk tidak penuh
+        return response()->download($zipPath)->deleteFileAfterSend(true);
     }
 }
