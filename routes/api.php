@@ -23,6 +23,9 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 // 3. Booking Engine (Mengunci slot 15 menit & Generate Midtrans Snap)
 Route::post('/booking/hold', [BookingController::class, 'hold']);
 
+// Route untuk mengambil kembali sesi pembayaran yang nyangkut
+Route::post('/booking/claim', [BookingController::class, 'claimOrphaned']);
+
 // 4. Cek Status Booking (untuk polling frontend setelah pembayaran)
 Route::get('/booking/status/{bookingId}', [BookingController::class, 'status']);
 

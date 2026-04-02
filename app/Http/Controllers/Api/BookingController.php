@@ -159,6 +159,31 @@ class BookingController extends Controller
             'payment_method' => $booking->payment_method,
         ]);
     }
-}
 
-//commit
+    public function claimOrphaned(Request $request)
+    {
+        // Validasi menggunakan token rahasia (Order ID) alih-alih ID slot
+        $request->validate([
+            'claim_token' => 'required|string'
+        ]);
+
+        // Cari transaksi sukses tanpa pemilik yang memiliki Order ID persis sama
+        $booking = Booking::with('timeSlot.venue')
+            ->where('midtrans_order_id', $request->claim_token)
+            ->where('status', 'success')
+            ->whereNull('user_id')
+            ->first();
+
+        if (!$booking) {
+            return $this->errorResponse('Token Klaim tidak valid, atau akun untuk jadwal ini sudah dibuat.', 404);
+        }
+
+        return $this->successResponse([
+            'booking_id' => $booking->id,
+            'venue_id'   => $booking->timeSlot->venue_id,
+            'venue_name' => $booking->timeSlot->venue->name,
+            'slot_id'    => $booking->timeSlot->id,
+            'time_range' => $booking->timeSlot->time_range
+        ], 'Token Valid! Silakan buat akun Anda.');
+    }
+}
