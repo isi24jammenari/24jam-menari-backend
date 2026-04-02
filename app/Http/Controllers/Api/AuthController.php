@@ -79,6 +79,16 @@ class AuthController extends Controller
 
             DB::commit();
 
+            // 5. Dispatch Email ke Redis Queue (Asinkron)
+            try {
+                // Tarik relasi yang dibutuhkan blade email
+                $booking->load(['timeSlot.venue']);
+                \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\PaymentSuccessMail($booking, $user));
+            } catch (\Exception $e) {
+                // Hanya log error agar API tidak meledak ke user jika Resend down
+                \Illuminate\Support\Facades\Log::error('Gagal queue email registrasi: ' . $e->getMessage());
+            }
+
             return $this->successResponse([
                 'user'         => $user,
                 'access_token' => $token,
