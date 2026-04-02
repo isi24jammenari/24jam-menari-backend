@@ -13,14 +13,14 @@ class DocumentController extends Controller
     // 1. Download File Statis (Proposal)
     public function proposal()
     {
-        // Pastikan Anda menaruh file "proposal_24jammenari.pdf" di dalam folder "storage/app/public/"
-        $filePath = 'public/proposal_24jammenari.pdf';
+        // Menggunakan resource_path agar file statis aman ter-commit ke GitHub dan Railway
+        $filePath = resource_path('files/Proposal_HTD_2026.pdf');
 
-        if (!Storage::exists($filePath)) {
+        if (!file_exists($filePath)) {
             return response()->json(['message' => 'File proposal belum diunggah oleh panitia.'], 404);
         }
 
-        return Storage::download($filePath, 'Proposal_24_Jam_Menari.pdf');
+        return response()->download($filePath, 'Proposal_HTD_2026.pdf');
     }
 
     // 2. Download File Dinamis (Undangan)
