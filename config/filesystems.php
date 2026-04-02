@@ -39,7 +39,7 @@ return [
         'google' => [
             'driver' => 'google',
             'folderId' => env('GOOGLE_DRIVE_FOLDER_ID'),
-            'serviceAccount' => storage_path('app/private/google-credentials.json'),
+            'credentialsJson' => env('GOOGLE_DRIVE_CREDENTIALS_JSON'),
         ],
 
     ],

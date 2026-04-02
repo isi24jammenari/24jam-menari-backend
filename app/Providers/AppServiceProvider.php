@@ -12,34 +12,32 @@ use Masbug\Flysystem\GoogleDriveAdapter;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        // MERAKIT JEMBATAN: Mengenalkan driver 'google' ke dalam ekosistem Laravel
         Storage::extend('google', function ($app, $config) {
             $client = new GoogleClient();
             
-            // PROTEKSI CLOUD STATELESS: 
-            // Kita prioritaskan membaca kredensial langsung dari Environment Variable Railway.
-            // Jika tidak ada (misal di lokal), baru fallback membaca file fisik json.
-            $envJson = env('GOOGLE_DRIVE_CREDENTIALS_JSON');
+            // 1. Tangkap string JSON dari config (hasil dari env Railway)
+            $jsonString = $config['credentialsJson'] ?? null;
             
-            if (!empty($envJson)) {
-                $client->setAuthConfig(json_decode($envJson, true));
-            } else {
-                $client->setAuthConfig($config['serviceAccount']);
+            // 2. Proteksi Lapis 1: Cek apakah variabel kosong
+            if (empty($jsonString)) {
+                throw new \Exception("SYSTEM HALTED: Variabel GOOGLE_DRIVE_CREDENTIALS_JSON kosong atau tidak terbaca di Railway!");
             }
-            
+
+            // 3. Proteksi Lapis 2: Cek apakah format JSON rusak (typo/kurang kurung) saat di-paste
+            $authConfig = json_decode($jsonString, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception("SYSTEM HALTED: Format JSON di GOOGLE_DRIVE_CREDENTIALS_JSON rusak! Error: " . json_last_error_msg());
+            }
+
+            // 4. Masukkan array kredensial langsung ke Google Client (Tanpa file fisik)
+            $client->setAuthConfig($authConfig);
             $client->addScope(GoogleDriveService::DRIVE);
             
             $service = new GoogleDriveService($client);
