@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // ✅ TAMBAHAN: Daftarkan alias middleware Gatekeeper Formulir
         $middleware->alias([
             'performance.completed' => \App\Http\Middleware\CheckPerformanceCompleted::class,
+            
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
