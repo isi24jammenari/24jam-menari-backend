@@ -51,7 +51,6 @@ class BookingController extends Controller
             $paymentOptions = [];
 
             switch ($request->payment_method) {
-                case 'bca':
                 case 'bni':
                 case 'bri':
                     $paymentType    = 'bank_transfer';
@@ -65,6 +64,15 @@ class BookingController extends Controller
                         'echannel' => [
                             'bill_info1' => 'Payment',
                             'bill_info2' => 'Ticket 24 Jam Menari'
+                        ]
+                    ];
+                    break;
+                case 'gopay':
+                    $paymentType = 'gopay';
+                    $paymentOptions = [
+                        'gopay' => [
+                            'enable_callback' => true,
+                            'callback_url' => 'https://24jammenariisisurakarta.com/dashboard/user'
                         ]
                     ];
                     break;
@@ -98,11 +106,16 @@ class BookingController extends Controller
                 'payment_method' => $request->payment_method,
             ];
 
-            if (in_array($request->payment_method, ['bca', 'bni', 'bri']) && isset($chargeResponse->va_numbers[0])) {
+            if (in_array($request->payment_method, ['bni', 'bri']) && isset($chargeResponse->va_numbers[0])) {
                 $paymentData['va_number'] = $chargeResponse->va_numbers[0]->va_number;
             } elseif ($request->payment_method === 'mandiri') {
                 $paymentData['biller_code'] = $chargeResponse->biller_code;
                 $paymentData['bill_key']    = $chargeResponse->bill_key;
+            } elseif ($request->payment_method === 'gopay') {
+                // Tarik QR dan Deeplink dari response Midtrans
+                $actions = collect($chargeResponse->actions ?? []);
+                $paymentData['qr_code_url'] = $actions->firstWhere('name', 'generate-qr-code')?->url ?? null;
+                $paymentData['gopay_deeplink'] = $actions->firstWhere('name', 'deeplink-redirect')?->url ?? null;
             } elseif ($request->payment_method === 'qris') {
                 // ✅ FIX 1: Cari action by name, bukan by index
                 // Urutan array actions dari Midtrans tidak dijamin sama setiap saat
