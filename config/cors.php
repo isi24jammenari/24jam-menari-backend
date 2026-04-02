@@ -11,11 +11,12 @@ return [
 
     'allowed_methods' => ['*'],
 
-    // Mengambil URL dari ENV Railway, fallback ke localhost untuk testing
     'allowed_origins' => [
         env('FRONTEND_URL', 'http://localhost:3000'),
+        'https://admin.24jammenariisisurakarta.com',
+        'https://24jammenariisisurakarta.com',
+        'http://admin.24jammenariisisurakarta.com',
     ],
-
     'allowed_origins_patterns' => [],
 
     'allowed_headers' => ['*'],

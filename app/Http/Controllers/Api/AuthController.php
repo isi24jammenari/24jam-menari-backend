@@ -104,8 +104,27 @@ class AuthController extends Controller
             return $this->errorResponse('Email atau password salah.', 401);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // ==================================================
+        // GATEKEEPER: STRICT ROLE SEPARATION BERDASARKAN URL
+        // ==================================================
+        $origin = (string) $request->header('origin', '');
+        $referer = (string) $request->header('referer', '');
 
+        // Deteksi apakah request berasal dari subdomain 'admin.'
+        $isAdminDomain = str_contains($origin, 'admin.') || str_contains($referer, 'admin.');
+
+        // 1. Jika URL-nya Admin, tapi role-nya BUKAN admin (User biasa nyasar ke portal Admin)
+        if ($isAdminDomain && $user->role !== 'admin') {
+            return $this->errorResponse('Akses ditolak! Halaman ini khusus untuk Admin. Silakan login di portal utama.', 403);
+        }
+
+        // 2. Jika URL-nya Utama (User), tapi role-nya ADMIN (Admin nyasar ke portal User)
+        if (!$isAdminDomain && $user->role === 'admin') {
+            return $this->errorResponse('Akses ditolak! Akun Admin harus login melalui portal admin.', 403);
+        }
+        // ==================================================
+
+        $token = $user->createToken('auth_token')->plainTextToken;
         return $this->successResponse([
             'user'         => $user,
             'access_token' => $token,
