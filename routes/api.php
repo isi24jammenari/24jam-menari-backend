@@ -20,6 +20,10 @@ Route::get('/venues', [VenueController::class, 'index']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 
+// TAMBAHKAN INI: Route Lupa Password
+Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:3,1');
+Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
+
 // 3. Booking Engine (Mengunci slot 15 menit & Generate Midtrans Snap)
 Route::post('/booking/hold', [BookingController::class, 'hold']);
 
