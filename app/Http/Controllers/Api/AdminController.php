@@ -24,7 +24,7 @@ class AdminController extends Controller
         $bookedSlots = TimeSlot::where('is_booked', true)->count();
 
         // Mutasi Data
-        $mutations = Booking::with(['user:id,name,email', 'timeSlot.venue:id,name'])
+        $mutations = Booking::with(['user:id,name,email', 'timeSlot.venue:id,name,festival_name'])
             ->where('status', 'success')
             ->orderBy('created_at', 'desc')
             ->paginate(20);
