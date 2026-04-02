@@ -19,13 +19,13 @@ class AdminController extends Controller
      */
     public function getOverview(Request $request)
     {
-        $totalIncome = Booking::where('status', 'paid')->sum('amount');
+        $totalIncome = Booking::where('status', 'success')->sum('amount');
         $totalSlots = TimeSlot::count();
         $bookedSlots = TimeSlot::where('is_booked', true)->count();
 
         // Mutasi Data
         $mutations = Booking::with(['user:id,name,email', 'timeSlot.venue:id,name'])
-            ->where('status', 'paid')
+            ->where('status', 'success')
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
@@ -47,7 +47,7 @@ class AdminController extends Controller
     {
         // Menarik semua relasi sekaligus untuk difilter oleh Excel di Frontend
         $participants = Booking::with(['user', 'timeSlot.venue', 'performance'])
-            ->where('status', 'paid')
+            ->where('status', 'success')
             ->get();
 
         return $this->successResponse($participants, 'Berhasil mengambil data seluruh peserta.');
