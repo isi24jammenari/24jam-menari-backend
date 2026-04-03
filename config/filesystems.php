@@ -40,6 +40,7 @@ return [
             'driver' => 'google',
             'folderId' => env('GOOGLE_DRIVE_FOLDER_ID'),
             'credentialsJson' => env('GOOGLE_DRIVE_CREDENTIALS_JSON'),
+            'throw' => true, // <--- SAKLAR PEMAKSA ERROR
         ],
 
     ],
