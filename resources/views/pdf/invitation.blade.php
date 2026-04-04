@@ -44,8 +44,8 @@
         .sign-center { width: 60%; margin: 0 auto; position: relative; text-align: center; }
         .stamp-img { 
             position: absolute; 
-            left: 15%; 
-            top: 5px; 
+            left: 9%; 
+            top: 30px; 
             width: 150px; 
             z-index: -1; 
             opacity: 0.85; 
