@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use ZipArchive;
+use App\Models\PerformanceRevision;
 
 class AdminController extends Controller
 {
@@ -141,5 +142,58 @@ class AdminController extends Controller
 
         // Return file zip dan LANGSUNG HAPUS dari server setelah didownload agar disk tidak penuh
         return response()->download($zipPath)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * ==========================================
+     * MANAJEMEN REVISI FORMULIR USER
+     * ==========================================
+     */
+    
+    // Tarik semua permintaan revisi yang statusnya pending
+    public function getPendingRevisions()
+    {
+        $revisions = PerformanceRevision::with([
+            'booking.user:id,name,email,phone',
+            'booking.timeSlot.venue:id,name',
+            'booking.performance' // Untuk komparasi data asli vs data baru di frontend
+        ])->where('status', 'pending')
+          ->orderBy('created_at', 'asc')
+          ->get();
+
+        return $this->successResponse($revisions, 'Berhasil mengambil daftar permintaan revisi.');
+    }
+
+    // Setujui dan Timpa Database Utama
+    public function approveRevision($id)
+    {
+        $revision = PerformanceRevision::findOrFail($id);
+        
+        if ($revision->status !== 'pending') {
+            return $this->errorResponse('Revisi ini sudah diproses sebelumnya.', 400);
+        }
+
+        // Timpa data utama di tabel performances
+        $dataToApply = $revision->revised_data;
+        $dataToApply['status'] = 'completed'; // Pastikan statusnya final
+        
+        Performance::updateOrCreate(
+            ['booking_id' => $revision->booking_id],
+            $dataToApply
+        );
+
+        // Tandai revisi sebagai disetujui
+        $revision->update(['status' => 'approved']);
+
+        return $this->successResponse(null, 'Permintaan perubahan data berhasil disetujui dan diterapkan ke database utama.');
+    }
+
+    // Tolak Revisi
+    public function rejectRevision($id)
+    {
+        $revision = PerformanceRevision::findOrFail($id);
+        $revision->update(['status' => 'rejected']);
+
+        return $this->successResponse(null, 'Permintaan perubahan data berhasil ditolak.');
     }
 }

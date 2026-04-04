@@ -96,6 +96,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/certificates/stats', [AdminController::class, 'getCertificateStats']);
         Route::get('/certificates/download-zip', [AdminController::class, 'generateCertificateZip']);
 
+        // Manajemen Revisi (Change Management)
+        Route::get('/revisions/pending', [AdminController::class, 'getPendingRevisions']);
+        Route::post('/revisions/{id}/approve', [AdminController::class, 'approveRevision']);
+        Route::post('/revisions/{id}/reject', [AdminController::class, 'rejectRevision']);
+
         // Komunitas Nonstop Routes
         Route::get('/komunitas/overview', [NonstopAdminController::class, 'getOverview']);
         Route::get('/komunitas/export', [NonstopAdminController::class, 'exportCsv']);
