@@ -121,7 +121,11 @@ class DashboardController extends Controller
             'booking.performance' => function ($query) {
                 $query->where('status', 'completed');
             }
-        ])->where('is_booked', true)->get();
+        ])
+        ->where('is_booked', true)
+        // PROTEKSI: Jangan tampilkan jadwal testing ke publik
+        ->where('time_range', '!=', '00:00 - 00:01 (SHADOW)') 
+        ->get();
 
         $safeData = $slots->map(function ($slot) {
             $performance = $slot->booking?->performance;
