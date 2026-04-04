@@ -6,48 +6,47 @@
     <style>
         /* RESET & BASE */
         @page {
-            margin: 1.5cm 2cm 2.5cm 2cm; /* Margin kertas (Top, Right, Bottom, Left) */
+            margin: 1cm 2cm 2cm 2cm; /* Margin atas dipangkas agar konten naik */
         }
         body {
             font-family: 'Times New Roman', Times, serif;
-            font-size: 12pt;
-            line-height: 1.5;
+            font-size: 11pt; /* Diperkecil sedikit untuk kepadatan */
+            line-height: 1.25; /* Kompresi jarak antar baris */
             color: #000;
             position: relative;
         }
-        p { margin-top: 0; margin-bottom: 10px; }
+        p { margin-top: 0; margin-bottom: 8px; } /* Jarak antar paragraf dikurangi */
         .justify { text-align: justify; }
         .indent { text-indent: 40px; }
         .clear { clear: both; }
 
         /* HEADER (LOGO & KOP SURAT) */
-        .header-container { width: 100%; margin-bottom: 20px; }
-        .header-logo { width: 100px; float: left; } /* Sesuaikan ukuran logo */
-        .header-text { margin-left: 120px; padding-top: 10px; }
-        .header-table { width: 100%; border-collapse: collapse; }
+        .header-container { width: 100%; margin-bottom: 10px; }
+        .header-logo { width: 140px; float: left; } /* LOGO DIPERBESAR (sebelumnya 100px) */
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
         .header-table td { vertical-align: top; padding: 0; }
 
         /* ISI KONTEN (DETAIL KEGIATAN) */
-        .detail-table { margin-left: 40px; margin-bottom: 15px; width: 90%; border-collapse: collapse; }
+        .detail-table { margin-left: 40px; margin-bottom: 10px; width: 90%; border-collapse: collapse; }
         .detail-table td { vertical-align: top; padding: 0; }
 
         /* TANDA TANGAN ATAS (DEKAN & KAJUR) */
-        .sign-row-1 { width: 100%; margin-top: 30px; position: relative; }
+        .sign-row-1 { width: 100%; margin-top: 15px; position: relative; }
         .sign-left { width: 50%; float: left; text-align: center; }
         .sign-right { width: 50%; float: right; text-align: center; }
-        .sign-img { height: 70px; margin-top: 5px; margin-bottom: 5px; }
+        .sign-img { height: 60px; margin-top: 2px; margin-bottom: 2px; } /* Gambar TTD sedikit dipadatkan */
         
         /* SPASI KOSONG UNTUK DEKAN (KARENA TANPA TTD) */
-        .empty-sign-space { height: 80px; }
+        .empty-sign-space { height: 65px; } /* Jarak ganjalan dikurangi */
 
         /* TANDA TANGAN BAWAH (KETUA HTD) */
-        .sign-row-2 { width: 100%; margin-top: 20px; position: relative; text-align: center; }
+        .sign-row-2 { width: 100%; margin-top: 5px; position: relative; text-align: center; }
         .sign-center { width: 60%; margin: 0 auto; position: relative; text-align: center; }
         .stamp-img { 
             position: absolute; 
-            left: 15%; /* Geser stempel ke kiri TTD */
-            top: 20px; 
-            width: 120px; 
+            left: 15%; 
+            top: 15px; 
+            width: 110px; 
             z-index: -1; 
             opacity: 0.85; 
         }
@@ -59,9 +58,9 @@
             left: 0;
             width: 100%;
             text-align: center;
-            font-size: 10pt;
-            color: #d4af37; /* Warna Kuning Emas gelap agar kontras di kertas putih */
-            line-height: 1.3;
+            font-size: 9pt; /* Proporsi disesuaikan dengan font bodi */
+            color: #d4af37; 
+            line-height: 1.2;
         }
         .footer p { margin: 0; }
         .footer strong { color: #b8860b; }
@@ -115,11 +114,11 @@
         <p class="indent">Demikian permohonan ini kami sampaikan. Atas Perhatiannya kami haturkan terimakasih.</p>
     </div>
 
-    <div style="text-align: right; margin-top: 30px;">
+    <div style="text-align: right; margin-top: 15px;">
         Surakarta, 30 Maret 2026
     </div>
 
-    <div style="text-align: left; margin-top: 10px;">
+    <div style="text-align: left; margin-top: 5px;">
         Mengetahui,
     </div>
 
