@@ -114,21 +114,15 @@
         <p class="indent">Demikian permohonan ini kami sampaikan. Atas Perhatiannya kami haturkan terimakasih.</p>
     </div>
 
-    <div style="text-align: right; margin-top: 15px;">
-        Surakarta, 30 Maret 2026
-    </div>
-
-    <div style="text-align: left; margin-top: 5px;">
-        Mengetahui,
-    </div>
-
-    <div class="sign-row-1">
+    <div class="sign-row-1" style="margin-top: 20px;">
         <div class="sign-left">
+            <div style="margin-bottom: 5px;">Mengetahui,</div>
             Dekan Fakultas Seni Pertunjukan
             <div class="empty-sign-space"></div> <strong>Dr. Dr Aris setiawan, S.Sn., M.Sn.</strong>
         </div>
         
         <div class="sign-right">
+            <div style="margin-bottom: 5px;">Surakarta, 30 Maret 2026</div>
             Ketua Jurusan Tari
             <br>
             <img src="{{ public_path('images/ttd_jurusan.png') }}" class="sign-img" alt="TTD Kajur">
