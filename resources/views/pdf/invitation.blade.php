@@ -70,7 +70,7 @@
 <body>
 
     <div class="header-container">
-        <img src="{{ public_path('images/24jammenari.webp') }}" class="header-logo" alt="Logo 24 Jam Menari">
+        <img src="{{ public_path('images/24jammenari.png') }}" class="header-logo" alt="Logo 24 Jam Menari">
         <div class="clear"></div>
     </div>
 
