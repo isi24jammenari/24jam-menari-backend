@@ -14,7 +14,7 @@ class Performance extends Model
         'booking_id', 'group_name', 'contact_person', 'cp_name',
         'category', 'supporters', 'works', 'synopsis',
         'arrival_departure', 'music_type', 'instruments',
-        'property_setting', 'certificate_names', 'status',
+        'property_setting', 'certificate_names', 'status', 'invitation_number',
     ];
 
     // Beri tahu Laravel agar kolom JSON dikonversi otomatis jadi Array
