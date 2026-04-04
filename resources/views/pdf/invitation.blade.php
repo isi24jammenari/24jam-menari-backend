@@ -45,7 +45,7 @@
         .stamp-img { 
             position: absolute; 
             left: 15%; 
-            top: 10px; 
+            top: 5px; 
             width: 150px; 
             z-index: -1; 
             opacity: 0.85; 
