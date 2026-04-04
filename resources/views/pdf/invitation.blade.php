@@ -22,7 +22,7 @@
 
         /* HEADER (LOGO & KOP SURAT) */
         .header-container { width: 100%; margin-bottom: 10px; }
-        .header-logo { width: 140px; float: left; } /* LOGO DIPERBESAR (sebelumnya 100px) */
+        .header-logo { width: 250px; float: left; } /* LOGO DIPERBESAR (sebelumnya 100px) */
         .header-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
         .header-table td { vertical-align: top; padding: 0; }
 
@@ -45,8 +45,8 @@
         .stamp-img { 
             position: absolute; 
             left: 15%; 
-            top: 15px; 
-            width: 110px; 
+            top: 10px; 
+            width: 150px; 
             z-index: -1; 
             opacity: 0.85; 
         }
