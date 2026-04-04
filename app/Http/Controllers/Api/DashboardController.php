@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Performance;
 use App\Models\PerformanceRevision;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf; // Pustaka PDF
 
 class DashboardController extends Controller
 {
@@ -105,6 +106,16 @@ class DashboardController extends Controller
 
         // LOGIKA NORMAL: Sebelum deadline, bebas timpa database langsung
         $dataToSave['status'] = $request->action === 'submit' ? 'completed' : 'draft';
+
+        // FITUR DOKUMEN: Auto-Assign Nomor Surat (Hanya jalan saat Submit Final)
+        if ($dataToSave['status'] === 'completed') {
+            $existingPerf = Performance::where('booking_id', $booking->id)->first();
+            if (!$existingPerf || is_null($existingPerf->invitation_number)) {
+                $maxNumber = Performance::max('invitation_number');
+                $dataToSave['invitation_number'] = $maxNumber >= 51 ? $maxNumber + 1 : 51;
+            }
+        }
+
         $performance = Performance::updateOrCreate(['booking_id' => $booking->id], $dataToSave);
 
         $message = $dataToSave['status'] === 'draft' 
@@ -138,5 +149,34 @@ class DashboardController extends Controller
         });
 
         return $this->successResponse($safeData, 'Jadwal publik berhasil ditarik.');
+    }
+
+    // ==========================================
+    // FITUR DOKUMEN: Download Undangan
+    // ==========================================
+    public function downloadInvitation(Request $request)
+    {
+        $booking = Booking::with('performance')
+            ->where('user_id', $request->user()->id)
+            ->where('status', 'success')
+            ->first();
+
+        if (!$booking || !$booking->performance || $booking->performance->status !== 'completed') {
+            return $this->errorResponse('Formulir pementasan belum lengkap atau belum disubmit final.', 400);
+        }
+
+        // Fallback jika anomali sistem menyebabkan nomor tidak ter-assign
+        if (is_null($booking->performance->invitation_number)) {
+            $maxNumber = Performance::max('invitation_number');
+            $newNum = $maxNumber >= 51 ? $maxNumber + 1 : 51;
+            $booking->performance->update(['invitation_number' => $newNum]);
+            $booking->load('performance');
+        }
+
+        // Panggil PDF Facade (Pastikan use Barryvdh\DomPDF\Facade\Pdf; ada di atas, atau pakai backslash seperti di bawah)
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invitation', compact('booking'));
+        
+        $fileName = 'Undangan_24JamMenari_' . str_replace(' ', '_', $booking->performance->group_name) . '.pdf';
+        return $pdf->download($fileName);
     }
 }
