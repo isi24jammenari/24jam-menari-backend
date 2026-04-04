@@ -107,16 +107,31 @@ class DashboardController extends Controller
         // LOGIKA NORMAL: Sebelum deadline, bebas timpa database langsung
         $dataToSave['status'] = $request->action === 'submit' ? 'completed' : 'draft';
 
-        // FITUR DOKUMEN: Auto-Assign Nomor Surat (Hanya jalan saat Submit Final)
+        // LOGIKA PENOMORAN & EMAIL OTOMATIS
+        $isFirstTimeFinal = false; // Detektor tembakan email
         if ($dataToSave['status'] === 'completed') {
             $existingPerf = Performance::where('booking_id', $booking->id)->first();
             if (!$existingPerf || is_null($existingPerf->invitation_number)) {
                 $maxNumber = Performance::max('invitation_number');
                 $dataToSave['invitation_number'] = $maxNumber >= 51 ? $maxNumber + 1 : 51;
+                $isFirstTimeFinal = true; // Tandai ini adalah momen "Submit Final" pertama kalinya
             }
         }
 
         $performance = Performance::updateOrCreate(['booking_id' => $booking->id], $dataToSave);
+
+        // TRIGGER PENGIRIMAN EMAIL OTOMATIS
+        if ($isFirstTimeFinal) {
+            try {
+                // Muat ulang relasi yang dibutuhkan Blade PDF
+                $bookingForPdf = Booking::with(['performance', 'timeSlot.venue', 'user'])->find($booking->id);
+                \Illuminate\Support\Facades\Mail::to($bookingForPdf->user->email)->send(new \App\Mail\InvitationMail($bookingForPdf));
+            } catch (\Exception $e) {
+                // Fail-safe: Jika SMTP Google down, jangan hentikan aplikasi. 
+                // Biarkan data tersimpan, user tetap bisa download manual di Dashboard.
+                \Illuminate\Support\Facades\Log::error('Gagal kirim email undangan: ' . $e->getMessage());
+            }
+        }
 
         $message = $dataToSave['status'] === 'draft' 
             ? 'Draft berhasil disimpan sementara.' 
