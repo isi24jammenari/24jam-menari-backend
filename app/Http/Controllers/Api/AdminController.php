@@ -30,6 +30,18 @@ class AdminController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
+        // INJEKSI VIRTUAL: Mencegah frontend membuang baris jika user belum klaim akun
+        $mutations->getCollection()->transform(function ($booking) {
+            if (!$booking->user) {
+                $booking->setRelation('user', new \App\Models\User([
+                    'id' => 'orphan-' . $booking->id,
+                    'name' => 'BELUM KLAIM AKUN (TOKEN)',
+                    'email' => 'Menunggu Klaim'
+                ]));
+            }
+            return $booking;
+        });
+
         return $this->successResponse([
             'stats' => [
                 'total_income'    => $totalIncome,
@@ -50,6 +62,18 @@ class AdminController extends Controller
         $participants = Booking::with(['user', 'timeSlot.venue', 'performance'])
             ->where('status', 'success')
             ->get();
+
+        // INJEKSI VIRTUAL: Memaksa Excel/Rundown frontend merender slot yang user_id-nya null
+        $participants->transform(function ($booking) {
+            if (!$booking->user) {
+                $booking->setRelation('user', new \App\Models\User([
+                    'id' => 'orphan-' . $booking->id,
+                    'name' => 'BELUM KLAIM AKUN (TOKEN)',
+                    'email' => 'Menunggu Klaim'
+                ]));
+            }
+            return $booking;
+        });
 
         return $this->successResponse($participants, 'Berhasil mengambil data seluruh peserta.');
     }
