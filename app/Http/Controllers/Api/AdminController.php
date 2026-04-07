@@ -30,11 +30,12 @@ class AdminController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        // INJEKSI VIRTUAL: Mencegah frontend membuang baris jika user belum klaim akun
+        // INJEKSI VIRTUAL MUTASI: Bypass filter frontend dengan mengisi user_id
         $mutations->getCollection()->transform(function ($booking) {
-            if (!$booking->user) {
+            if (!$booking->user_id || !$booking->user) {
+                $booking->user_id = 'orphan-id'; // Isi paksa user_id agar lolos filter
                 $booking->setRelation('user', new \App\Models\User([
-                    'id' => 'orphan-' . $booking->id,
+                    'id' => 'orphan-id',
                     'name' => 'BELUM KLAIM AKUN (TOKEN)',
                     'email' => 'Menunggu Klaim'
                 ]));
@@ -63,15 +64,34 @@ class AdminController extends Controller
             ->where('status', 'success')
             ->get();
 
-        // INJEKSI VIRTUAL: Memaksa Excel/Rundown frontend merender slot yang user_id-nya null
+        // INJEKSI GANDA: Bypass filter Excel dan Rundown yang mewajibkan objek performance
         $participants->transform(function ($booking) {
-            if (!$booking->user) {
+            // 1. Injeksi User
+            if (!$booking->user_id || !$booking->user) {
+                $booking->user_id = 'orphan-id';
                 $booking->setRelation('user', new \App\Models\User([
-                    'id' => 'orphan-' . $booking->id,
+                    'id' => 'orphan-id',
                     'name' => 'BELUM KLAIM AKUN (TOKEN)',
                     'email' => 'Menunggu Klaim'
                 ]));
             }
+
+            // 2. Injeksi Performance (SANGAT KRUSIAL UNTUK RUNDOWN & EXCEL)
+            if (!$booking->performance) {
+                $booking->setRelation('performance', new \App\Models\Performance([
+                    'id' => 'perf-orphan-' . $booking->id,
+                    'booking_id' => $booking->id,
+                    'group_name' => 'BELUM ISI FORMULIR (GHOST USER)',
+                    'category' => '-',
+                    'contact_person' => '-',
+                    'cp_name' => '-',
+                    'supporters' => '-',
+                    'works' => '[]',
+                    'status' => 'draft',
+                    'invitation_number' => null
+                ]));
+            }
+
             return $booking;
         });
 
