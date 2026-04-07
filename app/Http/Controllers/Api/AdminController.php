@@ -16,7 +16,7 @@ use App\Models\PerformanceRevision;
 class AdminController extends Controller
 {
     /**
-     * Tab Overview & Mutasi 
+     * Tab Overview & Mutasi (Paginator Palsu Mencegah Frontend Crash)
      */
     public function getOverview(Request $request)
     {
@@ -24,8 +24,9 @@ class AdminController extends Controller
         $totalSlots = TimeSlot::count();
         $bookedSlots = TimeSlot::where('is_booked', true)->count();
 
-        // Tarik data success DAN pending agar admin tidak buta terhadap transaksi gantung
-        $mutations = Booking::with(['user:id,name,email', 'timeSlot.venue:id,name,festival_name', 'performance'])
+        // Tarik data success DAN pending agar admin tidak buta terhadap transaksi gantung.
+        // HAPUS PEMBATASAN KOLOM untuk menghindari cacat serialisasi (Get All).
+        $mutations = Booking::with(['user', 'timeSlot.venue', 'performance'])
             ->whereIn('status', ['success', 'pending']) 
             ->orderBy('created_at', 'desc')
             ->get(); 
@@ -43,7 +44,7 @@ class AdminController extends Controller
                 ]));
             }
             
-            // INJEKSI VIRTUAL TIME SLOT & VENUE (Pencegah Data Lenyap Karena Relasi Putus)
+            // INJEKSI VIRTUAL TIME SLOT & VENUE (Pencegah Data Lenyap Karena Relasi Putus di Frontend)
             if (!$booking->timeSlot) {
                 $fakeVenue = new \App\Models\Venue([
                     'id' => 'error-venue',
@@ -101,11 +102,11 @@ class AdminController extends Controller
     }
 
     /**
-     * Tab Data Diri & Rundown 
+     * Tab Data Diri & Rundown (Digabung)
      */
     public function getParticipants()
     {
-        // Ambil juga yang pending agar muncul di Rundown sbg peringatan
+        // Tarik data success DAN pending. HAPUS PEMBATASAN KOLOM.
         $participants = Booking::with(['user', 'timeSlot.venue', 'performance'])
             ->whereIn('status', ['success', 'pending'])
             ->get();
@@ -131,6 +132,7 @@ class AdminController extends Controller
                     'name' => 'VENUE ERROR / TIDAK DITEMUKAN',
                     'festival_name' => 'ERROR'
                 ]);
+                
                 $fakeTimeSlot = new \App\Models\TimeSlot([
                     'id' => $booking->time_slot_id,
                     'venue_id' => 'error-venue',
@@ -138,6 +140,7 @@ class AdminController extends Controller
                     'price' => $booking->amount,
                     'is_booked' => true
                 ]);
+                
                 $fakeTimeSlot->setRelation('venue', $fakeVenue);
                 $booking->setRelation('timeSlot', $fakeTimeSlot);
             } elseif (!$booking->timeSlot->venue) {
