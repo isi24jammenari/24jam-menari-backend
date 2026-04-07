@@ -16,7 +16,7 @@ use App\Models\PerformanceRevision;
 class AdminController extends Controller
 {
     /**
-     * Tab Overview & Mutasi (Paginator Palsu Mencegah Frontend Crash)
+     * Tab Overview & Mutasi 
      */
     public function getOverview(Request $request)
     {
@@ -24,19 +24,21 @@ class AdminController extends Controller
         $totalSlots = TimeSlot::count();
         $bookedSlots = TimeSlot::where('is_booked', true)->count();
 
-        // Tarik semua data secara langsung (Get All)
+        // Tarik data success DAN pending agar admin tidak buta terhadap transaksi gantung
         $mutations = Booking::with(['user:id,name,email', 'timeSlot.venue:id,name,festival_name', 'performance'])
-            ->where('status', 'success')
+            ->whereIn('status', ['success', 'pending']) 
             ->orderBy('created_at', 'desc')
             ->get(); 
 
         // INJEKSI VIRTUAL MUTASI
         $mutations->transform(function ($booking) { 
+            $statusLabel = $booking->status === 'pending' ? ' (PENDING/STUCK)' : '';
+
             if (!$booking->user) {
                 $booking->user_id = 'orphan-id';
                 $booking->setRelation('user', new \App\Models\User([
                     'id' => 'orphan-id',
-                    'name' => 'BELUM KLAIM AKUN',
+                    'name' => 'BELUM KLAIM AKUN' . $statusLabel,
                     'email' => 'Menunggu Klaim'
                 ]));
             }
@@ -46,7 +48,7 @@ class AdminController extends Controller
                 $booking->setRelation('performance', new \App\Models\Performance([
                     'id' => 'perf-orphan-' . $booking->id,
                     'booking_id' => $booking->id,
-                    'group_name' => 'BELUM ISI FORM / TOKEN: ' . $booking->midtrans_order_id,
+                    'group_name' => 'BELUM ISI FORM / TOKEN: ' . $booking->midtrans_order_id . $statusLabel,
                     'status' => 'completed' // BYPASS FILTER FRONTEND
                 ]));
             }
@@ -72,23 +74,25 @@ class AdminController extends Controller
     }
 
     /**
-     * Tab Data Diri & Rundown (Digabung)
+     * Tab Data Diri & Rundown 
      */
     public function getParticipants()
     {
+        // Ambil juga yang pending agar muncul di Rundown sbg peringatan
         $participants = Booking::with(['user', 'timeSlot.venue', 'performance'])
-            ->where('status', 'success')
+            ->whereIn('status', ['success', 'pending'])
             ->get();
 
         // INJEKSI GANDA: Bypass filter Excel dan Rundown
         $participants->transform(function ($booking) {
+            $statusLabel = $booking->status === 'pending' ? ' (PENDING/STUCK)' : '';
             
             // 1. Bypass User
             if (!$booking->user) {
                 $booking->user_id = 'orphan-id';
                 $booking->setRelation('user', new \App\Models\User([
                     'id' => 'orphan-id',
-                    'name' => 'BELUM KLAIM AKUN',
+                    'name' => 'BELUM KLAIM AKUN' . $statusLabel,
                     'email' => 'Menunggu Klaim'
                 ]));
             }
@@ -98,7 +102,7 @@ class AdminController extends Controller
                 $booking->setRelation('performance', new \App\Models\Performance([
                     'id' => 'perf-orphan-' . $booking->id,
                     'booking_id' => $booking->id,
-                    'group_name' => 'BELUM ISI FORM / TOKEN: ' . $booking->midtrans_order_id,
+                    'group_name' => 'BELUM ISI FORM / TOKEN: ' . $booking->midtrans_order_id . $statusLabel,
                     'category' => '-',
                     'contact_person' => '-',
                     'cp_name' => '-',
