@@ -177,7 +177,7 @@ class AdminController extends Controller
             }
 
             if (!$booking->performance) {
-                $booking->setRelation('performance', new \App\Models\Performance([
+                $perf = new \App\Models\Performance([
                     'id' => 'perf-orphan-' . $booking->id,
                     'booking_id' => $booking->id,
                     'group_name' => 'BELUM ISI FORM / TOKEN: ' . ($booking->midtrans_order_id ?? 'KOSONG') . $statusLabel,
@@ -185,10 +185,15 @@ class AdminController extends Controller
                     'contact_person' => '-',
                     'cp_name' => '-',
                     'supporters' => '-',
-                    'works' => '[]',
-                    'status' => 'completed', 
+                    'status' => 'completed',
                     'invitation_number' => null
+                ]);
+                $perf->setRawAttributes(array_merge($perf->getAttributes(), [
+                    'works'             => json_encode([]),
+                    'instruments'       => json_encode([]),
+                    'certificate_names' => json_encode([]),
                 ]));
+                $booking->setRelation('performance', $perf);
             }
             return $booking;
         });
