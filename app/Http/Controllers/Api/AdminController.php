@@ -41,8 +41,9 @@ class AdminController extends Controller
                 // Tembus langsung ke inti DB menggunakan Raw Builder
                 $rawBooking = DB::table('bookings')->where('time_slot_id', $slot->id)->first();
 
-                // Konstruksi Ulang Model secara Paksa
-                $virtualBooking = new Booking([
+                // Konstruksi Ulang Model secara Paksa (Bypass Fillable Restriction)
+                $virtualBooking = new Booking();
+                $virtualBooking->setRawAttributes([
                     'id' => $rawBooking ? $rawBooking->id : 'RECOVERY-' . $slot->id,
                     'user_id' => $rawBooking ? $rawBooking->user_id : null,
                     'time_slot_id' => $slot->id,
@@ -51,7 +52,8 @@ class AdminController extends Controller
                     'payment_method' => $rawBooking ? $rawBooking->payment_method : 'SYSTEM',
                     'status' => 'success',
                     'created_at' => $rawBooking ? $rawBooking->created_at : now(),
-                ]);
+                    'updated_at' => now(),
+                ], true); // true = syncOriginal agar tidak dianggap 'dirty'
 
                 // Suntik relasi dan masukkan ke array mutasi
                 $virtualBooking->setRelation('timeSlot', $slot);
@@ -146,14 +148,21 @@ class AdminController extends Controller
         foreach ($lockedSlots as $slot) {
             if (!in_array($slot->id, $participantSlotIds)) {
                 $rawBooking = DB::table('bookings')->where('time_slot_id', $slot->id)->first();
-                $virtualBooking = new Booking([
+                
+                // Bypass Fillable Restriction untuk Excel
+                $virtualBooking = new Booking();
+                $virtualBooking->setRawAttributes([
                     'id' => $rawBooking ? $rawBooking->id : 'RECOVERY-' . $slot->id,
                     'user_id' => $rawBooking ? $rawBooking->user_id : null,
                     'time_slot_id' => $slot->id,
                     'midtrans_order_id' => $rawBooking ? $rawBooking->midtrans_order_id : 'MANUAL-RECOVERY',
                     'amount' => $rawBooking ? $rawBooking->amount : $slot->price,
+                    'payment_method' => $rawBooking ? $rawBooking->payment_method : 'SYSTEM',
                     'status' => 'success',
-                ]);
+                    'created_at' => $rawBooking ? $rawBooking->created_at : now(),
+                    'updated_at' => now(),
+                ], true);
+
                 $virtualBooking->setRelation('timeSlot', $slot);
                 $participants->push($virtualBooking);
             }
