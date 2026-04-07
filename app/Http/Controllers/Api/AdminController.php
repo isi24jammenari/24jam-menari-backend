@@ -43,6 +43,33 @@ class AdminController extends Controller
                 ]));
             }
             
+            // INJEKSI VIRTUAL TIME SLOT & VENUE (Pencegah Data Lenyap Karena Relasi Putus)
+            if (!$booking->timeSlot) {
+                $fakeVenue = new \App\Models\Venue([
+                    'id' => 'error-venue',
+                    'name' => 'VENUE ERROR / TIDAK DITEMUKAN',
+                    'festival_name' => 'ERROR'
+                ]);
+                
+                $fakeTimeSlot = new \App\Models\TimeSlot([
+                    'id' => $booking->time_slot_id,
+                    'venue_id' => 'error-venue',
+                    'time_range' => 'SLOT CACAT: ' . $booking->time_slot_id,
+                    'price' => $booking->amount,
+                    'is_booked' => true
+                ]);
+                
+                $fakeTimeSlot->setRelation('venue', $fakeVenue);
+                $booking->setRelation('timeSlot', $fakeTimeSlot);
+            } elseif (!$booking->timeSlot->venue) {
+                $fakeVenue = new \App\Models\Venue([
+                    'id' => 'error-venue',
+                    'name' => 'VENUE ERROR / TIDAK DITEMUKAN',
+                    'festival_name' => 'ERROR'
+                ]);
+                $booking->timeSlot->setRelation('venue', $fakeVenue);
+            }
+
             // INJEKSI PERFORMANCE MUTLAK (Pencegah Error UI)
             if (!$booking->performance) {
                 $booking->setRelation('performance', new \App\Models\Performance([
@@ -95,6 +122,31 @@ class AdminController extends Controller
                     'name' => 'BELUM KLAIM AKUN' . $statusLabel,
                     'email' => 'Menunggu Klaim'
                 ]));
+            }
+
+            // 1.5 Bypass TimeSlot/Venue (Pencegah Lenyap di Excel/UI)
+            if (!$booking->timeSlot) {
+                $fakeVenue = new \App\Models\Venue([
+                    'id' => 'error-venue',
+                    'name' => 'VENUE ERROR / TIDAK DITEMUKAN',
+                    'festival_name' => 'ERROR'
+                ]);
+                $fakeTimeSlot = new \App\Models\TimeSlot([
+                    'id' => $booking->time_slot_id,
+                    'venue_id' => 'error-venue',
+                    'time_range' => 'SLOT CACAT: ' . $booking->time_slot_id,
+                    'price' => $booking->amount,
+                    'is_booked' => true
+                ]);
+                $fakeTimeSlot->setRelation('venue', $fakeVenue);
+                $booking->setRelation('timeSlot', $fakeTimeSlot);
+            } elseif (!$booking->timeSlot->venue) {
+                $fakeVenue = new \App\Models\Venue([
+                    'id' => 'error-venue',
+                    'name' => 'VENUE ERROR / TIDAK DITEMUKAN',
+                    'festival_name' => 'ERROR'
+                ]);
+                $booking->timeSlot->setRelation('venue', $fakeVenue);
             }
 
             // 2. Bypass Performance (SANGAT KRUSIAL UNTUK RUNDOWN EXCEL)
