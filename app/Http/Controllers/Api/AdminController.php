@@ -16,7 +16,7 @@ use App\Models\PerformanceRevision;
 class AdminController extends Controller
 {
     /**
-     * Tab Overview & Mutasi (Pagination 20 data per page)
+     * Tab Overview & Mutasi (Tanpa Pagination)
      */
     public function getOverview(Request $request)
     {
@@ -24,22 +24,33 @@ class AdminController extends Controller
         $totalSlots = TimeSlot::count();
         $bookedSlots = TimeSlot::where('is_booked', true)->count();
 
-        // Mutasi Data
-        $mutations = Booking::with(['user:id,name,email', 'timeSlot.venue:id,name,festival_name'])
+        // Tarik semua data secara langsung (Get All)
+        $mutations = Booking::with(['user:id,name,email', 'timeSlot.venue:id,name,festival_name', 'performance'])
             ->where('status', 'success')
             ->orderBy('created_at', 'desc')
-            ->paginate(20);
+            ->get(); // <-- UBAH: paginate(20) dihapus dan diganti menjadi get()
 
-        // INJEKSI VIRTUAL MUTASI: Bypass filter frontend dengan mengisi user_id
-        $mutations->getCollection()->transform(function ($booking) {
-            if (!$booking->user_id || !$booking->user) {
-                $booking->user_id = 'orphan-id'; // Isi paksa user_id agar lolos filter
+        // INJEKSI VIRTUAL MUTASI
+        $mutations->transform(function ($booking) { // <-- UBAH: getCollection() dihapus karena sudah bukan paginator
+            if (!$booking->user) {
+                $booking->user_id = 'orphan-id';
                 $booking->setRelation('user', new \App\Models\User([
                     'id' => 'orphan-id',
-                    'name' => 'BELUM KLAIM AKUN (TOKEN)',
+                    'name' => 'BELUM KLAIM AKUN',
                     'email' => 'Menunggu Klaim'
                 ]));
             }
+            
+            // INJEKSI PERFORMANCE MUTLAK (Pencegah Error UI)
+            if (!$booking->performance) {
+                $booking->setRelation('performance', new \App\Models\Performance([
+                    'id' => 'perf-orphan',
+                    'booking_id' => $booking->id,
+                    'group_name' => 'BELUM ISI FORMULIR',
+                    'status' => 'completed' // BYPASS FILTER FRONTEND
+                ]));
+            }
+
             return $booking;
         });
 
@@ -59,35 +70,35 @@ class AdminController extends Controller
      */
     public function getParticipants()
     {
-        // Menarik semua relasi sekaligus untuk difilter oleh Excel di Frontend
         $participants = Booking::with(['user', 'timeSlot.venue', 'performance'])
             ->where('status', 'success')
             ->get();
 
-        // INJEKSI GANDA: Bypass filter Excel dan Rundown yang mewajibkan objek performance
+        // INJEKSI GANDA: Bypass filter Excel dan Rundown
         $participants->transform(function ($booking) {
-            // 1. Injeksi User
-            if (!$booking->user_id || !$booking->user) {
+            
+            // 1. Bypass User
+            if (!$booking->user) {
                 $booking->user_id = 'orphan-id';
                 $booking->setRelation('user', new \App\Models\User([
                     'id' => 'orphan-id',
-                    'name' => 'BELUM KLAIM AKUN (TOKEN)',
+                    'name' => 'BELUM KLAIM AKUN',
                     'email' => 'Menunggu Klaim'
                 ]));
             }
 
-            // 2. Injeksi Performance (SANGAT KRUSIAL UNTUK RUNDOWN & EXCEL)
+            // 2. Bypass Performance (SANGAT KRUSIAL UNTUK RUNDOWN EXCEL)
             if (!$booking->performance) {
                 $booking->setRelation('performance', new \App\Models\Performance([
                     'id' => 'perf-orphan-' . $booking->id,
                     'booking_id' => $booking->id,
-                    'group_name' => 'BELUM ISI FORMULIR (GHOST USER)',
+                    'group_name' => 'BELUM ISI FORM / TOKEN: ' . $booking->midtrans_order_id,
                     'category' => '-',
                     'contact_person' => '-',
                     'cp_name' => '-',
                     'supporters' => '-',
                     'works' => '[]',
-                    'status' => 'draft',
+                    'status' => 'completed', // STATUS INI YANG MEMAKSA EXCEL MENAMPILKANNYA
                     'invitation_number' => null
                 ]));
             }
