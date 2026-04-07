@@ -66,7 +66,6 @@ class AdminController extends Controller
             $statusLabel = $booking->status === 'pending' ? ' (PENDING/STUCK)' : '';
 
             if (!$booking->user) {
-                $booking->user_id = 'orphan-id';
                 $booking->setRelation('user', new \App\Models\User([
                     'id' => 'orphan-id',
                     'name' => 'BELUM KLAIM AKUN' . $statusLabel,
@@ -164,7 +163,6 @@ class AdminController extends Controller
             $statusLabel = $booking->status === 'pending' ? ' (PENDING/STUCK)' : '';
             
             if (!$booking->user) {
-                $booking->user_id = 'orphan-id';
                 $booking->setRelation('user', new \App\Models\User([
                     'id' => 'orphan-id',
                     'name' => 'BELUM KLAIM AKUN' . $statusLabel,
