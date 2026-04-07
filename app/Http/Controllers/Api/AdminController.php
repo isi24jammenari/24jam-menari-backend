@@ -16,7 +16,7 @@ use App\Models\PerformanceRevision;
 class AdminController extends Controller
 {
     /**
-     * Tab Overview & Mutasi (Tanpa Pagination)
+     * Tab Overview & Mutasi (Paginator Palsu Mencegah Frontend Crash)
      */
     public function getOverview(Request $request)
     {
@@ -28,10 +28,10 @@ class AdminController extends Controller
         $mutations = Booking::with(['user:id,name,email', 'timeSlot.venue:id,name,festival_name', 'performance'])
             ->where('status', 'success')
             ->orderBy('created_at', 'desc')
-            ->get(); // <-- UBAH: paginate(20) dihapus dan diganti menjadi get()
+            ->get(); 
 
         // INJEKSI VIRTUAL MUTASI
-        $mutations->transform(function ($booking) { // <-- UBAH: getCollection() dihapus karena sudah bukan paginator
+        $mutations->transform(function ($booking) { 
             if (!$booking->user) {
                 $booking->user_id = 'orphan-id';
                 $booking->setRelation('user', new \App\Models\User([
@@ -44,9 +44,9 @@ class AdminController extends Controller
             // INJEKSI PERFORMANCE MUTLAK (Pencegah Error UI)
             if (!$booking->performance) {
                 $booking->setRelation('performance', new \App\Models\Performance([
-                    'id' => 'perf-orphan',
+                    'id' => 'perf-orphan-' . $booking->id,
                     'booking_id' => $booking->id,
-                    'group_name' => 'BELUM ISI FORMULIR',
+                    'group_name' => 'BELUM ISI FORM / TOKEN: ' . $booking->midtrans_order_id,
                     'status' => 'completed' // BYPASS FILTER FRONTEND
                 ]));
             }
@@ -54,6 +54,7 @@ class AdminController extends Controller
             return $booking;
         });
 
+        // KEMBALIKAN BUNGKUSAN 'data' AGAR REACT/NEXT.JS TIDAK CRASH
         return $this->successResponse([
             'stats' => [
                 'total_income'    => $totalIncome,
@@ -61,7 +62,12 @@ class AdminController extends Controller
                 'booked_slots'    => $bookedSlots,
                 'available_slots' => $totalSlots - $bookedSlots,
             ],
-            'mutations' => $mutations
+            'mutations' => [
+                'data' => $mutations, // <--- INI KUNCI PENYELAMAT FRONTEND
+                'current_page' => 1,
+                'last_page' => 1,
+                'total' => $mutations->count()
+            ]
         ], 'Berhasil mengambil overview dan mutasi.');
     }
 
