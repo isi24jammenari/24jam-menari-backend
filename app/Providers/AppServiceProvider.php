@@ -5,49 +5,50 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Storage;
 use League\Flysystem\Filesystem;
-use Illuminate\Filesystem\FilesystemAdapter;
-use Google\Client as GoogleClient;
-use Google\Service\Drive as GoogleDriveService;
 use Masbug\Flysystem\GoogleDriveAdapter;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /**
+     * Register any application services.
+     */
     public function register(): void
     {
         //
     }
 
+    /**
+     * Bootstrap any application services.
+     */
     public function boot(): void
     {
+        // Daftarkan driver custom 'google' secara eksplisit
         Storage::extend('google', function ($app, $config) {
-            $client = new GoogleClient();
-            
-            // 1. Tangkap string JSON dari config (hasil dari env Railway)
-            $jsonString = $config['credentialsJson'] ?? null;
-            
-            // 2. Proteksi Lapis 1: Cek apakah variabel kosong
-            if (empty($jsonString)) {
-                throw new \Exception("SYSTEM HALTED: Variabel GOOGLE_DRIVE_CREDENTIALS_JSON kosong atau tidak terbaca di Railway!");
-            }
-
-            // 3. Proteksi Lapis 2: Cek apakah format JSON rusak (typo/kurang kurung) saat di-paste
-            $authConfig = json_decode($jsonString, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception("SYSTEM HALTED: Format JSON di GOOGLE_DRIVE_CREDENTIALS_JSON rusak! Error: " . json_last_error_msg());
-            }
-
-            // 4. Masukkan array kredensial langsung ke Google Client (Tanpa file fisik)
-            $client->setAuthConfig($authConfig);
-            $client->addScope(GoogleDriveService::DRIVE);
-            
-            $service = new GoogleDriveService($client);
-            $folderId = $config['folderId'] ?? '/';
             $options = [];
+
+            if (!empty($config['folderId'])) {
+                // SANGAT KRUSIAL: Ini yang membuat folderId Anda diakui sebagai Root
+                $options['folderId'] = $config['folderId']; 
+            }
+
+            // 1. Inisialisasi Google Client
+            $client = new \Google\Client();
+            $client->setScopes([\Google\Service\Drive::DRIVE]);
             
-            $adapter = new GoogleDriveAdapter($service, $folderId, $options);
+            // 2. Baca kredensial dari JSON string yang sudah kita buat one-liner
+            $client->setAuthConfig(json_decode($config['credentialsJson'], true));
+            
+            // 3. Matikan defer untuk memastikan koneksi langsung dieksekusi
+            $client->setDefer(false);
+
+            // 4. Inisialisasi layanan Google Drive
+            $service = new \Google\Service\Drive($client);
+
+            // 5. Binding adapter masbug dengan konfigurasi yang benar
+            $adapter = new GoogleDriveAdapter($service, $config['folderId'] ?? '', $options);
             $driver = new Filesystem($adapter);
-            
-            return new FilesystemAdapter($driver, $adapter, $config);
+
+            return $driver;
         });
     }
 }
