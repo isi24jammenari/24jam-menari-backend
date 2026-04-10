@@ -39,13 +39,14 @@ class NonstopDancerController extends Controller
         try {
             $nameSlug = str_replace(' ', '_', strtolower($request->name));
             $timestamp = now()->format('Ymd_His');
-            $folderPrefix = "{$nameSlug}_{$timestamp}";
+            // Kita pakai string ini sebagai awalan nama file agar tidak bentrok, BUKAN sebagai nama folder.
+            $filePrefix = "{$nameSlug}_{$timestamp}"; 
 
-            // PROSES UPLOAD KE GDRIVE
-            $healthCertPath = $request->file('health_cert')->storeAs($folderPrefix, '1_SuratSehat.' . $request->file('health_cert')->extension(), 'google');
-            $cvPath         = $request->file('cv')->storeAs($folderPrefix, '2_CV.' . $request->file('cv')->extension(), 'google');
-            $photoPath      = $request->file('photo')->storeAs($folderPrefix, '3_Foto.' . $request->file('photo')->extension(), 'google');
-            $videoPath      = $request->file('video')->storeAs($folderPrefix, '4_VideoMotivasi.' . $request->file('video')->extension(), 'google');
+            // PROSES UPLOAD KE GDRIVE (Langsung ke Root Folder ID)
+            $healthCertPath = $request->file('health_cert')->storeAs('', "{$filePrefix}_1_SuratSehat." . $request->file('health_cert')->extension(), 'google');
+            $cvPath         = $request->file('cv')->storeAs('', "{$filePrefix}_2_CV." . $request->file('cv')->extension(), 'google');
+            $photoPath      = $request->file('photo')->storeAs('', "{$filePrefix}_3_Foto." . $request->file('photo')->extension(), 'google');
+            $videoPath      = $request->file('video')->storeAs('', "{$filePrefix}_4_VideoMotivasi." . $request->file('video')->extension(), 'google');
 
             // PROTEKSI SILENT FAILURE: Jika GDrive menolak, gagalkan sistem!
             if (!$healthCertPath || !$cvPath || !$photoPath || !$videoPath) {
