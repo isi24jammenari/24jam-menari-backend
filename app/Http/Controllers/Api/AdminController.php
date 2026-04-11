@@ -222,6 +222,21 @@ class AdminController extends Controller
         return $this->successResponse(['is_open' => $isOpen], 'Berhasil mengambil status akses sertifikat.');
     }
 
+    public function toggleFormEditAccess(Request $request)
+    {
+        $request->validate(['is_open' => 'required|boolean']);
+        Cache::forever('form_edit_access_open', $request->is_open);
+        $statusText = $request->is_open ? 'dibuka' : 'ditutup (masuk antrean revisi)';
+        return $this->successResponse(null, "Akses edit langsung formulir telah $statusText.");
+    }
+
+    public function getFormEditStatus()
+    {
+        // Default true (bebas edit) jika cache belum diset
+        $isOpen = Cache::get('form_edit_access_open', true); 
+        return $this->successResponse(['is_open' => $isOpen], 'Berhasil mengambil status akses formulir.');
+    }
+
     public function getCertificateStats()
     {
         $completedPerformances = Performance::where('status', 'completed')->get();

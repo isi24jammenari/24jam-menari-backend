@@ -20,13 +20,17 @@ class DashboardController extends Controller
             ->get();
 
         // Injeksi status revisi ke setiap booking agar UI Frontend bisa menyesuaikan
-        $bookings->transform(function ($booking) {
+        $isFormEditOpen = \Illuminate\Support\Facades\Cache::get('form_edit_access_open', true);
+
+        $bookings->transform(function ($booking) use ($isFormEditOpen) {
             $pendingRevision = PerformanceRevision::where('booking_id', $booking->id)
                 ->where('status', 'pending')
                 ->first();
                 
             $booking->has_pending_revision = $pendingRevision ? true : false;
             $booking->pending_revision_data = $pendingRevision ? $pendingRevision->revised_data : null;
+            $booking->is_form_edit_open = $isFormEditOpen; // <-- INJEKSI SAKLAR ADMIN KE UI
+            
             return $booking;
         });
 
@@ -55,9 +59,9 @@ class DashboardController extends Controller
             return $this->errorResponse('Anda masih memiliki pengajuan perubahan data yang sedang menunggu persetujuan Admin.', 403);
         }
 
-        // THE DEADLINE ENGINE: 10 April 2026 23:59:59 WIB
-        $deadline = \Carbon\Carbon::create(2026, 4, 10, 23, 59, 59, 'Asia/Jakarta');
-        $isPastDeadline = now('Asia/Jakarta')->greaterThan($deadline);
+        // THE DYNAMIC DEADLINE ENGINE: Membaca Saklar dari Admin
+        // Jika form_edit_access_open = false, maka isPastDeadline = true (Masuk Karantina/Revisi)
+        $isPastDeadline = !\Illuminate\Support\Facades\Cache::get('form_edit_access_open', true);
 
         if ($request->action === 'submit') {
             $request->validate([

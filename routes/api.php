@@ -91,6 +91,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Pengelolaan (Buka Tutup Akses E-Sertifikat via Cache)
         Route::post('/settings/toggle-certificate', [AdminController::class, 'toggleCertificateAccess']);
         Route::get('/settings/certificate-status', [AdminController::class, 'getCertificateStatus']);
+
+        // Pengelolaan (Buka Tutup Akses Edit Bebas Formulir via Cache)
+        Route::post('/settings/toggle-form-edit', [AdminController::class, 'toggleFormEditAccess']);
+        Route::get('/settings/form-edit-status', [AdminController::class, 'getFormEditStatus']);
         
         // Manajemen E-Sertifikat
         Route::get('/certificates/stats', [AdminController::class, 'getCertificateStats']);
