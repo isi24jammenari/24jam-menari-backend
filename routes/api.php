@@ -119,5 +119,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/komunitas/overview', [NonstopAdminController::class, 'getOverview']);
         Route::get('/komunitas/export', [NonstopAdminController::class, 'exportCsv']);
         Route::post('/komunitas/toggle-status', [NonstopAdminController::class, 'toggleStatus']);
+
+        // Manajemen Tenant (Tambahan)
+        Route::get('/tenants', [\App\Http\Controllers\Api\TenantAdminController::class, 'index']);
+        Route::get('/tenants/export', [\App\Http\Controllers\Api\TenantAdminController::class, 'exportCsv']);
     });
 });
