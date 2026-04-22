@@ -47,6 +47,16 @@ Route::get('/public/rundown', [DashboardController::class, 'publicRundown']);
 
 
 // ==========================================
+// TENANT/BAZAAR ROUTES
+// ==========================================
+Route::prefix('tenant')->group(function () {
+    Route::get('/stands', [\App\Http\Controllers\Api\TenantBookingController::class, 'getStands']);
+    Route::post('/booking/hold', [\App\Http\Controllers\Api\TenantBookingController::class, 'hold']);
+    Route::get('/booking/status/{orderId}', [\App\Http\Controllers\Api\TenantBookingController::class, 'status']);
+    Route::post('/booking/submit-form', [\App\Http\Controllers\Api\TenantBookingController::class, 'submitForm']);
+});
+
+// ==========================================
 // PROTECTED ROUTES (Wajib Bearer Token / Sanctum)
 // ==========================================
 Route::middleware('auth:sanctum')->group(function () {
