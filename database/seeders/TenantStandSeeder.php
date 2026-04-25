@@ -12,8 +12,8 @@ class TenantStandSeeder extends Seeder
     {
         $stands = [];
         
-        // Membuat 16 Stand dengan harga Rp 1 untuk testing production
-        for ($i = 1; $i <= 16; $i++) {
+        // REVISI: Membuat 18 Stand dengan harga Rp 1 untuk testing production
+        for ($i = 1; $i <= 18; $i++) {
             $stands[] = [
                 'id' => Str::uuid()->toString(),
                 'stand_number' => $i,
@@ -24,6 +24,8 @@ class TenantStandSeeder extends Seeder
             ];
         }
 
+        // Kosongkan tabel dulu jika tidak ingin menggunakan migrate:fresh
+        DB::table('tenant_stands')->truncate();
         DB::table('tenant_stands')->insert($stands);
     }
 }

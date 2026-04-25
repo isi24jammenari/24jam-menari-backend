@@ -11,16 +11,21 @@ class TenantStandProductionSeeder extends Seeder
     public function run(): void
     {
         $stands = [];
-        for ($i = 1; $i <= 16; $i++) {
+        
+        // REVISI: Membuat 18 Stand 
+        for ($i = 1; $i <= 18; $i++) {
             $stands[] = [
                 'id' => Str::uuid()->toString(),
                 'stand_number' => $i,
-                'price' => 1800000, // HARGA ASLI PRODUCTION
+                'price' => 1200000, // HARGA ASLI PRODUCTION 1.2 JUTA
                 'is_booked' => false,
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
         }
+        
+        // Kosongkan tabel dulu agar tidak terjadi duplikasi
+        DB::table('tenant_stands')->truncate();
         DB::table('tenant_stands')->insert($stands);
     }
 }
