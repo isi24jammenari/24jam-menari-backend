@@ -133,12 +133,25 @@ class TenantBookingController extends Controller
 
     public function status(string $orderId)
     {
-        $booking = TenantBooking::where('midtrans_order_id', $orderId)->first();
-        if (!$booking) return $this->errorResponse('Order tidak ditemukan.', 404);
+        // 1. Tambahkan with('stand') agar nomor stand ikut ditarik dari database
+        // 2. Tambahkan orWhere('access_code') agar user bisa login manual pakai kode
+        $booking = TenantBooking::with('stand')
+            ->where('midtrans_order_id', $orderId)
+            ->orWhere('access_code', $orderId)
+            ->first();
 
+        if (!$booking) {
+            return $this->errorResponse('Order tidak ditemukan.', 404);
+        }
+
+        // 3. Kirimkan semua data yang dibutuhkan oleh Frontend
         return $this->successResponse([
-            'status' => $booking->status,
-            'access_code' => $booking->access_code // Akan terisi jika sudah sukses dari webhook
+            'status'         => $booking->status,
+            'access_code'    => $booking->access_code,
+            'pendaftar_name' => $booking->pendaftar_name,
+            'tenant_name'    => $booking->tenant_name,
+            'product_type'   => $booking->product_type,
+            'stand_number'   => $booking->stand ? $booking->stand->stand_number : null,
         ]);
     }
 
