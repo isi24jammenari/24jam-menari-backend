@@ -50,6 +50,10 @@ Route::get('/public/rundown', [DashboardController::class, 'publicRundown']);
 // TENANT/BAZAAR ROUTES
 // ==========================================
 Route::prefix('tenant')->group(function () {
+    // 1. ROUTE LOGIN ADMIN TENANT (Diletakkan di sini agar bisa diakses tanpa token)
+    Route::post('/auth/login', [AuthController::class, 'login']);
+
+    // 2. Booking Engine Tenant
     Route::get('/stands', [\App\Http\Controllers\Api\TenantBookingController::class, 'getStands']);
     Route::post('/booking/hold', [\App\Http\Controllers\Api\TenantBookingController::class, 'hold']);
     Route::get('/booking/status/{orderId}', [\App\Http\Controllers\Api\TenantBookingController::class, 'status']);
