@@ -19,32 +19,39 @@ class TenantAdminController extends Controller
 
         $stands = TenantStand::orderBy('stand_number', 'asc')->get();
 
+        // REVISI: Hitung pendapatan berdasarkan relasi harga stand, karena field 'amount' tidak ada
+        $totalIncome = $bookings->sum(function($booking) {
+            return $booking->stand ? $booking->stand->price : 1200000;
+        });
+
         $stats = [
-            'total_income' => $bookings->sum('amount'),
+            'total_income' => $totalIncome,
             'total_tenants' => $bookings->count(),
             'empty_stands' => $stands->where('is_booked', false)->count(),
         ];
 
-        return response()->json([
-            'status' => 'success',
+        // REVISI MUTLAK: Gunakan successResponse agar terbaca sebagai res.data di Frontend
+        return $this->successResponse([
             'stats' => $stats,
             'participants' => $bookings,
-            'stands' => $stands // Dikirim agar Frontend bisa merender Grid Manajemen
-        ]);
+            'stands' => $stands 
+        ], 'Data Dashboard Admin Tenant');
     }
 
     public function toggleStandStatus($id) 
     {
         $stand = TenantStand::findOrFail($id);
         $stand->update(['is_booked' => !$stand->is_booked]);
-        return response()->json(['status' => 'success', 'message' => 'Status stand berhasil diperbarui.']);
+        
+        return $this->successResponse(null, 'Status stand berhasil diperbarui.');
     }
 
     public function toggleAllStands(Request $request) 
     {
         $isBooked = $request->action === 'lock';
         TenantStand::query()->update(['is_booked' => $isBooked]);
-        return response()->json(['status' => 'success', 'message' => 'Seluruh stand berhasil ' . ($isBooked ? 'ditutup.' : 'dibuka.')]);
+        
+        return $this->successResponse(null, 'Seluruh stand berhasil ' . ($isBooked ? 'ditutup.' : 'dibuka.'));
     }
 
     public function manualRegister(Request $request) 
@@ -57,7 +64,7 @@ class TenantAdminController extends Controller
 
         $stand = TenantStand::findOrFail($request->stand_id);
         if ($stand->is_booked) {
-            return response()->json(['message' => 'Stand ini sudah berstatus terkunci/disewa.'], 400);
+            return $this->errorResponse('Stand ini sudah berstatus terkunci/disewa.', 400);
         }
 
         $stand->update(['is_booked' => true]);
@@ -65,9 +72,8 @@ class TenantAdminController extends Controller
         TenantBooking::create([
             'tenant_stand_id' => $stand->id,
             'midtrans_order_id' => 'MANUAL-' . strtoupper(Str::random(8)),
-            'amount' => $stand->price,
             'payment_method' => $request->payment_method ?? 'MANUAL_CASH',
-            'status' => 'success', // Langsung lunas
+            'status' => 'success', // Status langsung lunas
             'pendaftar_name' => $request->pendaftar_name,
             'pendaftar_email' => $request->pendaftar_email ?? 'admin-manual@tenant.com',
             'phone' => $request->phone,
@@ -76,7 +82,7 @@ class TenantAdminController extends Controller
             'expires_at' => now()->addYears(1),
         ]);
         
-        return response()->json(['status' => 'success', 'message' => 'Pendaftaran manual berhasil disimpan!']);
+        return $this->successResponse(null, 'Pendaftaran manual berhasil disimpan!');
     }
 
     public function exportCsv()
@@ -98,8 +104,12 @@ class TenantAdminController extends Controller
 
         $callback = function() use($bookings, $columns) {
             $file = fopen('php://output', 'w');
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM untuk Excel
-            fputcsv($file, $columns, ';'); // Delimiter pemisah khusus Excel
+            
+            // Format UTF-8 BOM untuk Excel
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+            
+            // Format delimiter ';' agar otomatis rapi saat dibuka
+            fputcsv($file, $columns, ';');
 
             foreach ($bookings as $index => $booking) {
                 fputcsv($file, [
@@ -114,6 +124,7 @@ class TenantAdminController extends Controller
                     strtoupper($booking->payment_method ?? '-')
                 ], ';');
             }
+
             fclose($file);
         };
 
