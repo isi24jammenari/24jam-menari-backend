@@ -17,7 +17,7 @@ class TenantStandProductionSeeder extends Seeder
             $stands[] = [
                 'id' => Str::uuid()->toString(),
                 'stand_number' => $i,
-                'price' => 1200000, // HARGA ASLI PRODUCTION 1.2 JUTA
+                'price' => 1050000, // HARGA ASLI PRODUCTION
                 'is_booked' => false,
                 'created_at' => now(),
                 'updated_at' => now(),
