@@ -30,29 +30,48 @@ class TenantAdminController extends Controller
 
     public function exportCsv()
     {
-        $bookings = TenantBooking::with('stand')->where('status', 'success')->get();
-        $filename = "data-tenant-" . date('Y-m-d') . ".csv";
+        $bookings = \App\Models\TenantBooking::with('stand')
+            ->where('status', 'success')
+            ->orderBy('updated_at', 'asc')
+            ->get();
 
-        $handle = fopen('php://output', 'w');
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        $headers = [
+            "Content-type"        => "text/csv; charset=UTF-8",
+            "Content-Disposition" => "attachment; filename=Data-Tenant-Bazaar-2026.csv",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
 
-        // Header CSV
-        fputcsv($handle, ['Stand', 'Nama Pendaftar', 'Email', 'No. WA', 'Nama Tenant', 'Jenis Produk', 'Status Bayar']);
+        // Sesuai urutan yang diminta + Stand & Metode
+        $columns = ['No', 'Timestamp Pendaftaran', 'Email', 'No. Telepon', 'Nama Pendaftar', 'Nama Tenant', 'Kategori', 'Nomor Stand', 'Metode Bayar'];
 
-        foreach ($bookings as $b) {
-            fputcsv($handle, [
-                $b->stand->stand_number,
-                $b->pendaftar_name,
-                $b->pendaftar_email,
-                $b->phone,
-                $b->tenant_name ?? '-',
-                $b->product_type ?? '-',
-                $b->status
-            ]);
-        }
+        $callback = function() use($bookings, $columns) {
+            $file = fopen('php://output', 'w');
+            
+            // 1. TAMBAHKAN BOM (Byte Order Mark) agar Excel membaca karakter UTF-8 dengan sempurna
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+            
+            // 2. GUNAKAN DELIMITER TITIK KOMA (;) agar langsung dibaca sebagai tabel oleh Excel Indonesia
+            fputcsv($file, $columns, ';');
 
-        fclose($handle);
-        exit;
+            foreach ($bookings as $index => $booking) {
+                fputcsv($file, [
+                    $index + 1,
+                    $booking->updated_at->format('Y-m-d H:i:s'),
+                    $booking->pendaftar_email,
+                    $booking->phone,
+                    $booking->pendaftar_name,
+                    $booking->tenant_name ?? '-',
+                    $booking->product_type ?? '-',
+                    $booking->stand ? $booking->stand->stand_number : '-',
+                    strtoupper($booking->payment_method ?? '-')
+                ], ';');
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }
