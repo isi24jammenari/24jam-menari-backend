@@ -127,5 +127,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Manajemen Tenant (Tambahan)
         Route::get('/tenants', [\App\Http\Controllers\Api\TenantAdminController::class, 'index']);
         Route::get('/tenants/export', [\App\Http\Controllers\Api\TenantAdminController::class, 'exportCsv']);
+
+        // --- FITUR BARU: MANAJEMEN STAND MANUAL ---
+        Route::post('/tenants/stands/{id}/toggle', [\App\Http\Controllers\Api\TenantAdminController::class, 'toggleStandStatus']);
+        Route::post('/tenants/stands/toggle-all', [\App\Http\Controllers\Api\TenantAdminController::class, 'toggleAllStands']);
+        Route::post('/tenants/manual-register', [\App\Http\Controllers\Api\TenantAdminController::class, 'manualRegister']);
     });
 });

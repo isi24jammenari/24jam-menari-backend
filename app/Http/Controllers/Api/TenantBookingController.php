@@ -44,10 +44,29 @@ class TenantBookingController extends Controller
 
             $orderId = '24JAM-TNT-' . strtoupper(Str::random(6)) . '-' . time();
 
+            // --- PERHITUNGAN BIAYA ADMIN DINAMIS ---
+            $basePrice = $stand->price; // Mengambil harga asli dari database
+            $payoutFee = 4000;          // Biaya tarik dana
+            $adminFee = 0;              // Biaya gerbang pembayaran
+
+            switch ($request->payment_method) {
+                case 'gopay':
+                    $adminFee = ceil($basePrice * 0.02) + $payoutFee; // 2% + 4000
+                    break;
+                case 'qris':
+                    $adminFee = ceil($basePrice * 0.007) + $payoutFee; // 0.7% + 4000
+                    break;
+                default: // Virtual Account (BNI, BRI, Mandiri)
+                    $adminFee = 4000 + $payoutFee; // 4000 + 4000
+                    break;
+            }
+
+            $totalAmount = $basePrice + $adminFee;
+
             $booking = TenantBooking::create([
                 'tenant_stand_id'   => $stand->id,
                 'midtrans_order_id' => $orderId,
-                'amount'            => $stand->price,
+                'amount'            => $totalAmount, // Menyimpan total keseluruhan (termasuk admin)
                 'payment_method'    => $request->payment_method,
                 'status'            => 'pending',
                 'expires_at'        => now()->addMinutes(15),
@@ -89,7 +108,22 @@ class TenantBookingController extends Controller
                 'payment_type' => $paymentType,
                 'transaction_details' => [
                     'order_id' => $orderId,
-                    'gross_amount' => (int) $stand->price,
+                    'gross_amount' => (int) $totalAmount,
+                ],
+                // PENAMBAHAN ITEM DETAILS AGAR MUNCUL DI RESI MIDTRANS
+                'item_details' => [
+                    [
+                        'id' => $stand->id,
+                        'price' => (int) $basePrice,
+                        'quantity' => 1,
+                        'name' => "Stand Bazaar #" . $stand->stand_number,
+                    ],
+                    [
+                        'id' => 'ADMIN-FEE',
+                        'price' => (int) $adminFee,
+                        'quantity' => 1,
+                        'name' => "Biaya Layanan & Penarikan Dana",
+                    ]
                 ],
                 'customer_details' => [
                     'first_name' => $request->pendaftar_name,
@@ -133,8 +167,6 @@ class TenantBookingController extends Controller
 
     public function status(string $orderId)
     {
-        // 1. Tambahkan with('stand') agar nomor stand ikut ditarik dari database
-        // 2. Tambahkan orWhere('access_code') agar user bisa login manual pakai kode
         $booking = TenantBooking::with('stand')
             ->where('midtrans_order_id', $orderId)
             ->orWhere('access_code', $orderId)
@@ -144,7 +176,6 @@ class TenantBookingController extends Controller
             return $this->errorResponse('Order tidak ditemukan.', 404);
         }
 
-        // 3. Kirimkan semua data yang dibutuhkan oleh Frontend
         return $this->successResponse([
             'status'         => $booking->status,
             'access_code'    => $booking->access_code,
@@ -157,7 +188,6 @@ class TenantBookingController extends Controller
 
     public function submitForm(Request $request)
     {
-        // Mendukung pemanggilan form lewat order_id (otomatis) ATAU access_code (login manual)
         $request->validate([
             'order_id' => 'nullable|string',
             'access_code' => 'nullable|string',
@@ -187,7 +217,6 @@ class TenantBookingController extends Controller
             'product_type' => $request->product_type,
         ]);
 
-        // Kirim email konfirmasi final
         Mail::to($booking->pendaftar_email)->queue(new TenantFormCompletedMail($booking));
 
         return $this->successResponse(null, 'Formulir berhasil disimpan!');
