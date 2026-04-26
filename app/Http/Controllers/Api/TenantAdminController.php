@@ -112,6 +112,46 @@ class TenantAdminController extends Controller
         return $this->successResponse(null, 'Pendaftaran manual berhasil disimpan!');
     }
 
-    // Fungsi exportCsv tetap sama seperti revisi sebelumnya...
-    public function exportCsv() { /* ... */ }
+    public function exportCsv()
+    {
+        $bookings = TenantBooking::with('stand')
+            ->where('status', 'success')
+            ->orderBy('updated_at', 'asc')
+            ->get();
+
+        $headers = [
+            "Content-type"        => "text/csv; charset=UTF-8",
+            "Content-Disposition" => "attachment; filename=Data-Tenant-Bazaar-2026.csv",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        // TAMBAHKAN 'Kode Akses' di array $columns
+        $columns = ['No', 'Timestamp Pendaftaran', 'Kode Akses', 'Email', 'No. Telepon', 'Nama Pendaftar', 'Nama Tenant', 'Kategori', 'Nomor Stand', 'Metode Bayar'];
+
+        $callback = function() use($bookings, $columns) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM UTF-8
+            fputcsv($file, $columns, ';'); 
+
+            foreach ($bookings as $index => $booking) {
+                fputcsv($file, [
+                    $index + 1,
+                    $booking->updated_at->format('Y-m-d H:i:s'),
+                    $booking->access_code, // DATA KODE AKSES
+                    $booking->pendaftar_email,
+                    $booking->phone,
+                    $booking->pendaftar_name,
+                    $booking->tenant_name ?? '-',
+                    $booking->product_type ?? '-',
+                    $booking->stand ? $booking->stand->stand_number : '-',
+                    strtoupper($booking->payment_method ?? '-')
+                ], ';');
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }
