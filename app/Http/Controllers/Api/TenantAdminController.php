@@ -5,20 +5,20 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\TenantBooking;
 use App\Models\TenantStand;
+use App\Mail\TenantFormCompletedMail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class TenantAdminController extends Controller
 {
     public function index()
     {
-        // Ambil semua booking sukses (manual maupun asli)
         $bookings = TenantBooking::with('stand')
             ->where('status', 'success')
             ->orderBy('updated_at', 'desc')
             ->get();
 
-        // Ambil semua stand dan cari tahu statusnya secara mendalam
         $stands = TenantStand::orderBy('stand_number', 'asc')->get()->map(function($stand) {
             $booking = TenantBooking::where('tenant_stand_id', $stand->id)
                         ->where('status', 'success')
@@ -27,11 +27,11 @@ class TenantAdminController extends Controller
             $type = 'available';
             if ($stand->is_booked) {
                 if (!$booking) {
-                    $type = 'manual_locked'; // Ditutup manual tanpa data
+                    $type = 'manual_locked'; 
                 } elseif (Str::startsWith($booking->midtrans_order_id, 'MANUAL-')) {
-                    $type = 'manual_registered'; // Didaftarkan manual oleh admin
+                    $type = 'manual_registered'; 
                 } else {
-                    $type = 'real_user_paid'; // Dibeli user asli (LOCKED)
+                    $type = 'real_user_paid'; 
                 }
             }
 
@@ -60,7 +60,6 @@ class TenantAdminController extends Controller
     {
         $stand = TenantStand::findOrFail($id);
         
-        // PROTEKSI ABSOLUT: Cek apakah ada booking user asli yang sukses
         $hasRealBooking = TenantBooking::where('tenant_stand_id', $id)
             ->where('status', 'success')
             ->where('midtrans_order_id', 'not like', 'MANUAL-%')
@@ -74,6 +73,14 @@ class TenantAdminController extends Controller
         return $this->successResponse(null, 'Status stand berhasil diperbarui.');
     }
 
+    public function toggleAllStands(Request $request) 
+    {
+        $isBooked = $request->action === 'lock';
+        TenantStand::query()->update(['is_booked' => $isBooked]);
+        
+        return $this->successResponse(null, 'Seluruh stand berhasil ' . ($isBooked ? 'ditutup.' : 'dibuka.'));
+    }
+
     public function manualRegister(Request $request) 
     {
         $request->validate([
@@ -84,7 +91,6 @@ class TenantAdminController extends Controller
 
         $stand = TenantStand::findOrFail($request->stand_id);
         
-        // Cek apakah sudah ada user asli
         $hasRealBooking = TenantBooking::where('tenant_stand_id', $stand->id)
             ->where('status', 'success')
             ->where('midtrans_order_id', 'not like', 'MANUAL-%')
@@ -96,9 +102,11 @@ class TenantAdminController extends Controller
 
         $stand->update(['is_booked' => true]);
         
-        TenantBooking::create([
+        // PERBAIKAN: Menyertakan 'amount' agar tidak terjadi error SQL Not Null
+        $booking = TenantBooking::create([
             'tenant_stand_id' => $stand->id,
             'midtrans_order_id' => 'MANUAL-' . strtoupper(Str::random(8)),
+            'amount' => $stand->price, 
             'payment_method' => $request->payment_method ?? 'MANUAL_CASH',
             'status' => 'success',
             'pendaftar_name' => $request->pendaftar_name,
@@ -108,6 +116,15 @@ class TenantAdminController extends Controller
             'product_type' => $request->product_type ?? 'MANUAL',
             'expires_at' => now()->addYears(1),
         ]);
+        
+        // PERBAIKAN: Kirim email otomatis jika alamat email disertakan
+        if ($booking->pendaftar_email && $booking->pendaftar_email !== 'admin-manual@tenant.com') {
+            try {
+                Mail::to($booking->pendaftar_email)->queue(new TenantFormCompletedMail($booking));
+            } catch (\Exception $e) {
+                // Mengabaikan error koneksi SMTP agar stand tetap berhasil tersimpan
+            }
+        }
         
         return $this->successResponse(null, 'Pendaftaran manual berhasil disimpan!');
     }
@@ -127,19 +144,18 @@ class TenantAdminController extends Controller
             "Expires"             => "0"
         ];
 
-        // TAMBAHKAN 'Kode Akses' di array $columns
         $columns = ['No', 'Timestamp Pendaftaran', 'Kode Akses', 'Email', 'No. Telepon', 'Nama Pendaftar', 'Nama Tenant', 'Kategori', 'Nomor Stand', 'Metode Bayar'];
 
         $callback = function() use($bookings, $columns) {
             $file = fopen('php://output', 'w');
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM UTF-8
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF)); 
             fputcsv($file, $columns, ';'); 
 
             foreach ($bookings as $index => $booking) {
                 fputcsv($file, [
                     $index + 1,
                     $booking->updated_at->format('Y-m-d H:i:s'),
-                    $booking->access_code, // DATA KODE AKSES
+                    $booking->access_code,
                     $booking->pendaftar_email,
                     $booking->phone,
                     $booking->pendaftar_name,
